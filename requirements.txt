@@ -10,14 +10,27 @@ transformers>=4.39.0
 torch>=2.2.0
 sentence-transformers>=2.6.0
 
-# Vector DB
+# Vector DB & Search
 faiss-cpu>=1.8.0
+rank-bm25>=0.2.2
 
-# PDF handling
+# Document & Audio handling
 PyMuPDF>=1.24.0
+python-docx>=1.1.0
+openpyxl>=3.1.0
+python-pptx>=0.6.23
+openai-whisper>=20231117   # audio transcription (MP3/WAV)
 
 # Data & Utils
 numpy>=1.26.0
 pandas>=2.2.0
 scikit-learn>=1.4.0
 python-dotenv>=1.0.0
+pydantic>=2.5.0
+PyYAML>=6.0
+requests>=2.31.0
+
+
+
+# One-time model downloads (not pip-installable):
+#   python -m spacy download en_core_web_sm

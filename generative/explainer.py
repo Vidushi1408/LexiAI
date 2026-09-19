@@ -6,9 +6,6 @@ Gives deep, structured concept explanations grounded in the student's notes.
 import os, sys, requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ── Ollama config ─────────────────────────────────────────────
-OLLAMA_URL   = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "mistral"
 
 _notes_sentences = []
 
@@ -18,29 +15,7 @@ def set_notes_context(sentences: list):
     _notes_sentences = sentences
 
 
-def _call_ollama(system_prompt: str, user_message: str, max_tokens: int = 1000) -> str | None:
-    """Call local Ollama model. Returns text or None."""
-    payload = {
-        "model"   : OLLAMA_MODEL,
-        "stream"  : False,
-        "options" : {"num_predict": max_tokens, "temperature": 0.3},
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_message},
-        ],
-    }
-    try:
-        resp = requests.post(OLLAMA_URL, json=payload, timeout=90)
-        if resp.status_code == 200:
-            return resp.json()["message"]["content"].strip()
-        print(f"[EXPLAINER] Ollama error {resp.status_code}")
-        return None
-    except requests.exceptions.ConnectionError:
-        print("[EXPLAINER] ❌ Ollama not running. Start with: ollama serve")
-        return None
-    except Exception as e:
-        print(f"[EXPLAINER] Failed: {e}")
-        return None
+from llm.client import chat as _call_ollama
 
 
 SYSTEM_PROMPT = (

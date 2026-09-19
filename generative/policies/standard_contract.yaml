@@ -1,0 +1,30 @@
+# Versioned policy checklist used by the Compliance Checker.
+# `keywords` drive the offline rule-based scan; `description` is shown to the LLM.
+id: standard_contract
+version: "1.0"
+name: Standard Enterprise Contract Checklist
+requirements:
+  - id: termination
+    name: Termination & Notice Period
+    description: Rights to terminate and the notice period required.
+    keywords: [termination, terminate, notice period, written notice]
+  - id: data_protection
+    name: Data Protection & Confidentiality
+    description: Confidentiality obligations and data protection / privacy terms (e.g. GDPR, CCPA).
+    keywords: [confidential, data protection, privacy, gdpr, ccpa, personal data]
+  - id: liability
+    name: Limitation of Liability & Indemnity
+    description: Liability caps, exclusions and indemnification.
+    keywords: [liability, indemni, limitation of liability]
+  - id: payment
+    name: Payment Terms & Penalties
+    description: Payment schedule, fees, late-payment penalties.
+    keywords: [payment, invoice, fee, penalty, late charge]
+  - id: sla
+    name: SLA & Performance Commitments
+    description: Service levels, uptime or performance guarantees and remedies.
+    keywords: [sla, service level, uptime, availability, service credit, performance guarantee]
+  - id: governing_law
+    name: Governing Law & Dispute Resolution
+    description: Governing law, jurisdiction and dispute resolution mechanism.
+    keywords: [governing law, jurisdiction, arbitration, dispute resolution, courts of]

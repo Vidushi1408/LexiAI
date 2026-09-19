@@ -1,263 +1,135 @@
 # generative/quiz_generator.py
 """
-Ollama (llama3.2:3b) powered Quiz Generator
-Generates exam-style MCQ questions with plausible distractors and full explanations.
+Compliance Checker — Lexi AI
+Evaluates a business document against a versioned policy checklist (PASS / FAIL / REVIEW).
+The LLM is constrained to a JSON schema, and every PASS/FAIL must carry a quote that is
+verified to exist in the document — otherwise it is downgraded to REVIEW.
+Falls back to a rule-based keyword scan when Ollama is offline.
+(Filename kept for import compatibility; `generate_quiz` is a legacy alias.)
 """
-import os, sys, re, json, random, requests
+import os, sys, re
+import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from llm.client import chat_json
+from generative.schemas import ComplianceReport
+from generative.quote_check import quote_in_text
 
-# ── Ollama config ─────────────────────────────────────────────
-OLLAMA_URL   = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "llama3.2:3b"
+POLICY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "policies", "standard_contract.yaml")
 
-# ── Visual topics (for Wikipedia image fetch) ─────────────────
-VISUAL_TOPICS = {
-    "neural network", "deep learning", "cnn", "convolution", "lstm",
-    "transformer", "attention mechanism", "backpropagation", "gradient descent",
-    "decision tree", "random forest", "clustering", "k-means", "pca",
-    "rnn", "autoencoder", "gan", "architecture", "diagram", "graph",
-    "cell", "dna", "chromosome", "mitosis", "photosynthesis", "atom",
-    "circuit", "processor", "memory", "cpu", "gpu", "network topology",
-    "osi model", "tcp ip", "sorting", "binary tree", "hash table",
-    "data structure", "algorithm", "flowchart", "uml", "er diagram",
-}
+COMPLIANCE_SYSTEM_PROMPT = """You are an enterprise compliance analyst reviewing a business document.
 
-QUIZ_SYSTEM_PROMPT = """You are a professor creating high-quality exam questions.
+For EACH checklist item, decide whether the document satisfies it, using ONLY the provided text.
+Return one finding per checklist item with:
+  requirement    : the checklist item name
+  status         : PASS (clearly satisfied), FAIL (clearly violated or contradicted) or REVIEW (missing, ambiguous or needs a human)
+  explanation    : 1-2 sentences justifying the status
+  recommendation : one concrete next step
+  quote          : a VERBATIM excerpt copied from the document that supports the status; empty string if none exists
 
-Generate MCQ questions that test DEEP UNDERSTANDING — not memorization.
-
-QUESTION TYPES (vary across questions):
-- "application": Apply the concept to a new scenario
-- "scenario": "A student notices X... what is happening?"
-- "cause_effect": "What happens when Y occurs?"
-- "conceptual": "Which statement CORRECTLY describes X?"
-- "comparison": "What is the KEY difference between X and Y?"
-- "error_spotting": "Which statement about X is INCORRECT?"
-
-RULES:
-- Base questions ONLY on the provided notes
-- All 4 options must be plausible — use common misconceptions as distractors
-- Explanation must say WHY correct is right AND why others are wrong
-- Set needs_image true ONLY for highly visual topics (diagrams, biology, circuits)
-
-CRITICAL: Output ONLY a valid JSON array. No markdown. No extra text.
-
-[
-  {
-    "question": "question text",
-    "question_type": "conceptual",
-    "options": {"A": "...", "B": "...", "C": "...", "D": "..."},
-    "answer": "B",
-    "explanation": "B is correct because... others are wrong because...",
-    "needs_image": false,
-    "image_topic": "",
-    "topic": "main concept"
-  }
-]"""
+Rules: never invent clauses or paraphrase inside `quote`. If the evidence is absent, use REVIEW with an empty quote."""
 
 
-def _call_ollama(system_prompt: str, user_message: str, max_tokens: int = 3000) -> str | None:
-    """Call local Ollama model. Returns raw text or None."""
-    payload = {
-        "model"   : OLLAMA_MODEL,
-        "stream"  : False,
-        "options" : {"num_predict": max_tokens, "temperature": 0.4},
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_message},
-        ],
+def load_policy(path: str = POLICY_FILE) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _finalize(finding: dict, doc_text: str) -> dict:
+    """Map a finding to the UI shape and enforce the verified-quote rule."""
+    quote = (finding.get("quote") or "").strip()
+    verified = bool(quote) and quote_in_text(quote, doc_text)
+    status, explanation = finding["status"], finding["explanation"]
+    if status in ("PASS", "FAIL") and not verified:
+        status = "REVIEW"
+        explanation += " (Downgraded to REVIEW: no verifiable supporting quote in the document.)"
+    return {
+        "requirement": finding["requirement"], "status": status, "explanation": explanation,
+        "recommendation": finding["recommendation"],
+        "citation": quote if verified else "Section Not Found",
+        "quote_verified": verified,
     }
-    try:
-        resp = requests.post(OLLAMA_URL, json=payload, timeout=180)
-        if resp.status_code == 200:
-            return resp.json()["message"]["content"].strip()
-        print(f"[QUIZ] Ollama error {resp.status_code}")
-        return None
-    except requests.exceptions.ConnectionError:
-        print("[QUIZ] ❌ Ollama not running. Start with: ollama serve")
-        return None
-    except Exception as e:
-        print(f"[QUIZ] Failed: {e}")
-        return None
 
 
-def _parse_json_from_response(raw: str) -> list:
+def evaluate_compliance(sentences: list, custom_checklist: str = None) -> list:
     """
-    Robustly extract a JSON array from the model response.
-    llama3.2 sometimes wraps output in markdown fences.
+    Evaluates document sentences against the standard policy (or a custom checklist).
+    Returns a list of dicts: requirement, status, explanation, recommendation, citation, quote_verified.
     """
-    if not raw:
-        return []
-    # Strip markdown fences
-    raw = re.sub(r"^```(?:json)?\s*", "", raw.strip())
-    raw = re.sub(r"\s*```$",          "", raw.strip())
-    raw = raw.strip()
-
-    # Try direct parse
-    try:
-        data = json.loads(raw)
-        return data if isinstance(data, list) else []
-    except json.JSONDecodeError:
-        pass
-
-    # Find JSON array anywhere in the text
-    match = re.search(r"\[.*\]", raw, re.DOTALL)
-    if match:
-        try:
-            data = json.loads(match.group())
-            return data if isinstance(data, list) else []
-        except json.JSONDecodeError:
-            pass
-
-    print(f"[QUIZ] Could not parse JSON. Raw snippet: {raw[:300]}")
-    return []
-
-
-def _needs_visual(topic: str) -> bool:
-    if not topic:
-        return False
-    tl = topic.lower().strip()
-    if any(vt in tl for vt in VISUAL_TOPICS):
-        return True
-    visual_keywords = ["architecture", "structure", "diagram", "topology",
-                       "layer", "cycle", "process", "flow", "model"]
-    return any(kw in tl for kw in visual_keywords)
-
-
-def _fetch_wikipedia_image(topic: str) -> str | None:
-    """Fetch a Wikipedia thumbnail. Returns URL or None."""
-    try:
-        resp = requests.get(
-            f"https://en.wikipedia.org/api/rest_v1/page/summary/{topic.replace(' ', '_')}",
-            timeout=5,
-            headers={"User-Agent": "StudyMateAI/1.0"},
-        )
-        if resp.status_code == 200:
-            data  = resp.json()
-            thumb = data.get("thumbnail", {}).get("source")
-            width = data.get("thumbnail", {}).get("width", 0)
-            if thumb and width >= 100:
-                return thumb
-    except Exception:
-        pass
-    return None
-
-
-def generate_quiz(sentences: list, num_questions: int = 5) -> list:
-    """Generate quiz questions from note sentences using Ollama."""
     if not sentences:
         return []
 
-    selected    = sentences[:60]
-    notes_chunk = " ".join(selected)
-    if len(notes_chunk) > 3500:
-        notes_chunk = notes_chunk[:3500]
+    doc_text = " ".join(sentences[:80])[:4000]
+    policy = load_policy()
 
-    print(f"[QUIZ] Requesting {num_questions} questions from Ollama ({OLLAMA_MODEL})...")
+    if custom_checklist and custom_checklist.strip():
+        checklist = f"Checklist / Policy Rules to verify:\n{custom_checklist.strip()}"
+    else:
+        checklist = f"{policy['name']} (v{policy['version']}) — verify each item:\n" + "\n".join(
+            f"{n}. {r['name']} — {r['description']}" for n, r in enumerate(policy["requirements"], 1))
 
-    user_msg = (
-        f"Generate exactly {num_questions} exam MCQ questions from these notes. "
-        f"Mix question types. Make distractors plausible.\n\n"
-        f"Output ONLY the JSON array — no other text.\n\n"
-        f"Notes:\n{notes_chunk}"
-    )
-    raw           = _call_ollama(QUIZ_SYSTEM_PROMPT, user_msg, max_tokens=3000)
-    raw_questions = _parse_json_from_response(raw)
+    user_msg = f"{checklist}\n\nDocument Content to Evaluate:\n{doc_text}"
+    report = chat_json(COMPLIANCE_SYSTEM_PROMPT, user_msg, ComplianceReport, max_tokens=3000)
 
-    if not raw_questions:
-        print("[QUIZ] Ollama failed — using rule-based fallback")
-        return _rule_based_fallback(sentences, num_questions)
-
-    # Post-process: validate + fetch images
-    questions = []
-    for q in raw_questions[:num_questions]:
-        q.setdefault("explanation",   "")
-        q.setdefault("question_type", "conceptual")
-        q.setdefault("needs_image",   False)
-        q.setdefault("image_topic",   "")
-        q.setdefault("topic",         "")
-
-        topic     = q.get("image_topic") or q.get("topic", "")
-        use_image = _needs_visual(topic) and bool(topic)
-        q["use_image"] = use_image
-        q["image_url"] = None
-
-        if use_image:
-            img = _fetch_wikipedia_image(topic)
-            if img:
-                q["image_url"] = img
-                print(f"[QUIZ] 🖼  Image: {topic}")
-            else:
-                q["use_image"] = False
-
-        questions.append(q)
-
-    img_count = sum(1 for q in questions if q.get("use_image"))
-    print(f"[QUIZ] ✅ {len(questions)} questions ready ({img_count} with images)")
-    return questions
+    if report is None or not report.items:
+        return _rule_based_compliance_fallback(sentences, policy)
+    return [_finalize(f.model_dump(), doc_text) for f in report.items]
 
 
-def _rule_based_fallback(sentences: list, num: int) -> list:
-    """Simple fallback when Ollama is unavailable."""
-    import nltk
-    from nltk.corpus import stopwords
-    nltk.download("punkt",     quiet=True)
-    nltk.download("stopwords", quiet=True)
-    stop_w    = set(stopwords.words("english"))
-    good      = [s for s in sentences if len(s.split()) >= 10 and "?" not in s]
-    random.shuffle(good)
-    all_words = list({
-        w for s in sentences
-        for w in s.split()
-        if w.isalpha() and w.lower() not in stop_w and len(w) > 4
-    })
+def _rule_based_compliance_fallback(sentences: list, policy: dict | None = None) -> list:
+    """Offline keyword scan: quotes the first sentence that mentions each requirement."""
+    policy = policy or load_policy()
     results = []
-    for sentence in good[:num]:
-        words = [w for w in sentence.split()
-                 if w.isalpha() and w.lower() not in stop_w and len(w) > 4]
-        if not words:
-            continue
-        key   = random.choice(words[:3])
-        wrong = [w for w in all_words if w.lower() != key.lower()][:3]
-        while len(wrong) < 3:
-            wrong.append(f"option {len(wrong)+1}")
-        opts    = [key] + wrong
-        random.shuffle(opts)
-        letters = ["A", "B", "C", "D"]
-        opt_map = {letters[i]: opts[i] for i in range(4)}
-        correct = next(l for l, v in opt_map.items() if v == key)
+    for req in policy["requirements"]:
+        hit = next((s for s in sentences if any(k in s.lower() for k in req["keywords"])), None)
         results.append({
-            "question"     : f"Which term correctly completes: '{sentence[:80].replace(key, '___')}'?",
-            "question_type": "conceptual",
-            "options"      : opt_map,
-            "answer"       : correct,
-            "explanation"  : f"'{key}' is correct based on: {sentence}",
-            "topic"        : key,
-            "use_image"    : False,
-            "image_url"    : None,
+            "requirement": req["name"],
+            "status": "PASS" if hit else "REVIEW",
+            "explanation": ("Relevant clause located by keyword scan (LLM offline) — adequacy not assessed."
+                            if hit else f"No provision mentioning {req['name'].lower()} was found."),
+            "recommendation": ("Have legal confirm the clause is adequate." if hit
+                               else f"Add or confirm a standard clause for {req['name']}."),
+            "citation": hit.strip()[:300] if hit else "Section Not Found",
+            "quote_verified": bool(hit),
         })
     return results
 
 
+def generate_quiz(sentences: list, num_questions: int = 5) -> list:
+    """Compatibility alias — routes to compliance checker."""
+    items = evaluate_compliance(sentences)
+    # Convert compliance items to MCQ structure for any legacy callers
+    quiz_items = []
+    for idx, item in enumerate(items[:num_questions], 1):
+        quiz_items.append({
+            "question": f"Compliance Audit Point #{idx}: {item['requirement']}",
+            "question_type": "compliance_check",
+            "options": {
+                "A": f"PASS - {item['explanation'][:60]}",
+                "B": f"FAIL - {item['recommendation'][:60]}",
+                "C": "REVIEW - Requires Manual Legal Review",
+                "D": "NOT APPLICABLE"
+            },
+            "answer": "A" if item["status"] == "PASS" else ("B" if item["status"] == "FAIL" else "C"),
+            "explanation": f"[{item['status']}] {item['explanation']} Citation: {item['citation']}",
+            "use_image": False,
+            "image_url": None,
+            "topic": item["requirement"]
+        })
+    return quiz_items
+
+
 def format_quiz_for_display(quiz: list) -> str:
+    """Formats compliance / quiz items for text display."""
     if not quiz:
-        return "No quiz questions generated."
-    type_labels = {
-        "application"  : "Application",
-        "scenario"     : "Scenario",
-        "cause_effect" : "Cause & Effect",
-        "conceptual"   : "Conceptual",
-        "comparison"   : "Comparison",
-        "error_spotting": "Error Spotting",
-    }
-    lines = [f"Quiz — {len(quiz)} Questions\n", "=" * 60]
-    for i, q in enumerate(quiz, 1):
-        qtype = type_labels.get(q.get("question_type", ""), "MCQ")
-        lines.append(f"\nQ{i}. [{qtype}] {q['question']}")
-        for l, t in q["options"].items():
-            lines.append(f"   {l}) {t}")
-        lines.append(f"   ✓ Answer: {q['answer']}")
-        if q.get("explanation"):
-            lines.append(f"   💡 {q['explanation']}")
-        lines.append("")
+        return "No compliance items found."
+    lines = ["Compliance Evaluation Report\n", "=" * 60]
+    for i, item in enumerate(quiz, 1):
+        req = item.get("requirement") or item.get("question", f"Item #{i}")
+        status = item.get("status", "REVIEW")
+        expl = item.get("explanation", "")
+        rec = item.get("recommendation", "")
+        lines.append(f"\n{i}. [{status}] {req}")
+        lines.append(f"   Explanation: {expl}")
+        if rec:
+            lines.append(f"   Recommendation: {rec}")
     return "\n".join(lines)
