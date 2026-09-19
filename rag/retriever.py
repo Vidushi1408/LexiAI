@@ -1,109 +1,124 @@
 # rag/retriever.py
 
 """
-FAISS Retriever
-----------------
-Given a user's question, finds the most relevant
-text chunks from the FAISS index.
-
-Retrieval steps:
-  1. Embed the user's question (same model used for indexing)
-  2. Normalize the query vector
-  3. Search FAISS for top-k nearest vectors
-  4. Return the corresponding text chunks + similarity scores
-
-Think of it like:
-  - Your notes are filed in a library by "meaning"
-  - Your question has a "meaning fingerprint"
-  - FAISS finds the files closest to that fingerprint
+Hybrid Search & Retrieval Engine — Lexi AI
+-------------------------------------------
+Combines BM25 keyword matching + FAISS dense vector search for high-precision
+document retrieval.
 """
 
+# pyrefly: ignore [missing-import]
 import faiss
+# pyrefly: ignore [missing-import]
 import numpy as np
 from embeddings.sentence_embeddings import embed_query as embed_single
 
+try:
+    # pyrefly: ignore [missing-import]
+    from rank_bm25 import BM25Okapi
+    _BM25_AVAILABLE = True
+except ImportError:
+    _BM25_AVAILABLE = False
 
-def retrieve_relevant_chunks(query: str,
-                              index,
-                              chunks: list,
-                              top_k: int = 3) -> list:
+
+def hybrid_search(query: str, index, chunks: list, top_k: int = 5, alpha: float = 0.5) -> list:
     """
-    Retrieves the top-k most relevant chunks for a query.
-
+    Executes Hybrid Search combining BM25 keyword scores and FAISS Vector similarity.
+    
     Args:
-        query (str): User's question
+        query (str): Search query
         index: Loaded FAISS index
-        chunks (list): Original text chunks
-        top_k (int): How many chunks to retrieve
+        chunks (list): Document text chunks
+        top_k (int): Number of top results to return
+        alpha (float): Weight for Vector vs BM25 (0.5 = equal blend)
 
     Returns:
-        list: Top-k (chunk_text, similarity_score) tuples
-              Sorted by relevance (highest first)
+        list of tuples: (chunk_text, final_hybrid_score, metadata_dict)
     """
-
-    if index is None or not chunks:
+    if not chunks:
         return []
 
-    # Step 1: Embed the query using the SAME model used for indexing
-    query_vec = embed_single(query).astype(np.float32)
+    # 1. Vector Search
+    vector_scores = {}
+    if index is not None:
+        query_vec = embed_single(query).astype(np.float32).reshape(1, -1)
+        faiss.normalize_L2(query_vec)
+        D, I = index.search(query_vec, min(len(chunks), top_k * 3))
+        for score, idx in zip(D[0], I[0]):
+            if idx != -1 and idx < len(chunks):
+                vector_scores[idx] = max(0.0, float(score))
 
-    # Step 2: Reshape to 2D (FAISS expects batch input)
-    query_vec = query_vec.reshape(1, -1)           # Shape: (1, 384)
+    # 2. BM25 / Keyword Search
+    bm25_scores = {}
+    tokens = [w.lower() for w in query.split() if len(w) > 2]
+    
+    raw_bm25 = []
+    if _BM25_AVAILABLE and chunks:
+        corpus = [c.lower().split() for c in chunks]
+        raw_bm25 = BM25Okapi(corpus).get_scores(tokens)
+    # BM25's IDF collapses to 0 on very small documents, so fall back to term overlap
+    if len(raw_bm25) and max(raw_bm25) > 0:
+        max_b = max(raw_bm25)
+        for i, score in enumerate(raw_bm25):
+            bm25_scores[i] = float(score) / max_b
+    else:
+        for i, chunk in enumerate(chunks):
+            cl = chunk.lower()
+            match_cnt = sum(1 for t in tokens if t in cl)
+            bm25_scores[i] = min(1.0, match_cnt / max(1, len(tokens)))
 
-    # Step 3: Normalize (same as we did for the index vectors)
-    faiss.normalize_L2(query_vec)
-
-    # Step 4: Search FAISS
-    # Returns: distances (similarity scores) and indices of top-k matches
-    # D = distances matrix (1, top_k)
-    # I = indices matrix  (1, top_k)
-    D, I = index.search(query_vec, top_k)
-
-    # Step 5: Map indices back to original text chunks
+    # 3. Hybrid Blending
     results = []
-    for score, idx in zip(D[0], I[0]):
-        if idx == -1:           # FAISS returns -1 for empty slots
-            continue
-        if idx >= len(chunks):  # Safety check
-            continue
+    for idx in range(len(chunks)):
+        v_score = vector_scores.get(idx, 0.0)
+        b_score = bm25_scores.get(idx, 0.0)
+        final_score = round(alpha * v_score + (1 - alpha) * b_score, 4)
 
-        chunk_text  = chunks[idx]
-        similarity  = float(score)  # Higher = more relevant (cosine sim)
+        if final_score > 0.05:
+            # Matched keywords
+            matched_words = [t for t in tokens if t in chunks[idx].lower()]
+            page = getattr(chunks[idx], "page", None)
+            meta = {
+                "vector_score": round(v_score, 3),
+                "bm25_score": round(b_score, 3),
+                "doc_name": getattr(chunks[idx], "doc", "Primary Document"),
+                "page": page if page is not None else "n/a",
+                "location": getattr(chunks[idx], "label", "") or (f"Page {page}" if page else "location unknown"),
+                "chunk_id": idx,
+                "matched_keywords": list(set(matched_words)),
+            }
+            results.append((chunks[idx], final_score, meta))
 
-        results.append((chunk_text, round(similarity, 4)))
-
-    # Sort by similarity (highest first)
     results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_k]
 
-    return results
 
-
-def build_context_string(retrieved_chunks: list,
-                          max_chars: int = 1200) -> str:
+def retrieve_relevant_chunks(query: str, index, chunks: list, top_k: int = 3) -> list:
     """
-    Combines retrieved chunks into a single context string
-    to pass to the answer generator.
-
-    We limit total length to avoid overflowing the model's
-    context window.
-
-    Args:
-        retrieved_chunks (list): Output from retrieve_relevant_chunks()
-        max_chars (int): Max total characters in context
-
-    Returns:
-        str: Combined context string with chunk labels
+    Backwards-compatible API wrapper returning (chunk_text, similarity_score) tuples.
+    Uses Hybrid Search under the hood.
     """
+    hybrid = hybrid_search(query, index, chunks, top_k=top_k)
+    return [(chunk, score) for chunk, score, _ in hybrid]
 
+
+def build_context_string(retrieved_chunks: list, max_chars: int = 2000) -> str:
+    """
+    Combines retrieved chunks into a cited context string for LLM generation.
+    """
     context_parts = []
-    total_chars   = 0
+    total_chars = 0
 
-    for i, (chunk, score) in enumerate(retrieved_chunks):
-        # Label each chunk so the model knows they're separate sources
-        labeled = f"[Source {i+1} | Relevance: {score:.2f}]\n{chunk}"
+    for i, item in enumerate(retrieved_chunks):
+        if isinstance(item, tuple) and len(item) == 3:
+            chunk, score, meta = item
+            labeled = f"[Citation {i+1} | Doc: {meta['doc_name']} | Location: {meta['location']} | Relevance: {score:.2f}]\n{chunk}"
+        else:
+            chunk, score = item
+            labeled = f"[Citation {i+1} | Score: {score:.2f}]\n{chunk}"
 
         if total_chars + len(labeled) > max_chars:
-            break  # Stop if we'd exceed the limit
+            break
 
         context_parts.append(labeled)
         total_chars += len(labeled)
@@ -111,25 +126,21 @@ def build_context_string(retrieved_chunks: list,
     return "\n\n".join(context_parts)
 
 
-def is_query_answerable(retrieved_chunks: list,
-                         threshold: float = 0.30) -> bool:
+def answer_confidence(retrieved_chunks: list) -> float:
     """
-    Checks if the retrieved chunks are relevant enough
-    to answer the query.
-
-    If the best match has a low similarity score, the question
-    is probably not covered in the uploaded notes.
-
-    Args:
-        retrieved_chunks (list): Output from retrieve_relevant_chunks()
-        threshold (float): Minimum acceptable similarity score
-
-    Returns:
-        bool: True if query can be answered, False otherwise
+    How well the best retrieved passage matches the query, on a 0-1 scale.
+    Uses the raw vector (cosine) similarity: the hybrid score is unusable for gating because BM25
+    is max-normalised, which gives the top chunk 1.0 on the keyword side even for unrelated queries.
+    Falls back to the hybrid score when no vector scores exist (BM25-only mode).
     """
-
     if not retrieved_chunks:
-        return False
+        return 0.0
+    vec = [it[2].get("vector_score", 0.0) for it in retrieved_chunks if len(it) == 3]
+    if vec and max(vec) > 0:
+        return float(max(vec))
+    return float(retrieved_chunks[0][1])
 
-    best_score = retrieved_chunks[0][1]  # Highest similarity score
-    return best_score >= threshold
+
+def is_query_answerable(retrieved_chunks: list, threshold: float = 0.3) -> bool:
+    """Checks if the best retrieved passage is relevant enough to answer from."""
+    return answer_confidence(retrieved_chunks) >= threshold

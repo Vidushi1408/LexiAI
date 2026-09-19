@@ -15,6 +15,13 @@ _CHUNKS_FILE = os.path.join(_INDEX_DIR, "chunks.pkl")
 _HASH_FILE   = os.path.join(_INDEX_DIR, "text_hash.txt")
 
 
+class Chunk(str):
+    """A text chunk that remembers where it came from (a plain str everywhere else)."""
+    doc:   str        = "Primary Document"
+    page:  int | None = None
+    label: str        = ""
+
+
 def _text_hash(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()
 
@@ -37,12 +44,24 @@ def _chunk_text(text: str, chunk_size: int = 3, overlap: int = 1) -> list[str]:
     return chunks
 
 
+def _chunk_pages(pages: list[dict], chunk_size: int = 3, overlap: int = 1) -> list[Chunk]:
+    """Chunk each page separately so every chunk keeps its true document and page."""
+    chunks = []
+    for p in pages:
+        for text in _chunk_text(p["text"], chunk_size=chunk_size, overlap=overlap):
+            c = Chunk(text)
+            c.doc, c.page, c.label = p.get("doc", "Primary Document"), p.get("page"), p.get("label", "")
+            chunks.append(c)
+    return chunks
+
+
 def index_document(
     text: str,
     chunk_size: int = 3,
     overlap: int = 1,
     save: bool = True,
     force: bool = False,
+    pages: list[dict] | None = None,
 ):
     """
     Build (or load from cache) a FAISS index for the given text.
@@ -50,13 +69,13 @@ def index_document(
     Returns
     -------
     index  : faiss.IndexFlatIP  (inner-product = cosine on normalized vecs)
-    chunks : list[str]
+    chunks : list[str]  (Chunk objects carry .doc / .page / .label when `pages` is given)
     """
     import faiss
     from embeddings.sentence_embeddings import embed_sentences
 
     os.makedirs(_INDEX_DIR, exist_ok=True)
-    current_hash = _text_hash(text)
+    current_hash = _text_hash(text + "".join(f"|{p.get('doc')}:{p.get('page')}" for p in pages or []))
 
     # ── Cache hit ──────────────────────────────────────────────────────────────
     if (
@@ -78,7 +97,8 @@ def index_document(
 
     # ── Build fresh ────────────────────────────────────────────────────────────
     print("[INDEX] Building FAISS index (document changed or first run)...")
-    chunks = _chunk_text(text, chunk_size=chunk_size, overlap=overlap)
+    chunks = (_chunk_pages(pages, chunk_size, overlap) if pages
+              else _chunk_text(text, chunk_size=chunk_size, overlap=overlap))
     print(f"[INDEX] {len(chunks)} chunks created")
 
     vecs = embed_sentences(chunks, use_cache=True)    # safe — cache key is hash of sentences

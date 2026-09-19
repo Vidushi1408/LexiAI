@@ -8,108 +8,34 @@ import os, sys, json, requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rag.retriever import retrieve_relevant_chunks, build_context_string, is_query_answerable
 from rag.indexer   import load_index
-
-# ── Ollama config ─────────────────────────────────────────────
-OLLAMA_URL   = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "llama3.2:3b"
-
-
-def _call_ollama(system_prompt: str, user_message: str, max_tokens: int = 1000) -> str | None:
-    """
-    Calls the local Ollama /api/chat endpoint.
-    Returns the assistant's reply text, or None on failure.
-    """
-    payload = {
-        "model"   : OLLAMA_MODEL,
-        "stream"  : False,
-        "options" : {"num_predict": max_tokens, "temperature": 0.3},
-        "messages": [
-            {"role": "system",  "content": system_prompt},
-            {"role": "user",    "content": user_message},
-        ],
-    }
-    try:
-        resp = requests.post(OLLAMA_URL, json=payload, timeout=120)
-        if resp.status_code == 200:
-            return resp.json()["message"]["content"].strip()
-        print(f"[AGENT] Ollama error {resp.status_code}: {resp.text[:200]}")
-        return None
-    except requests.exceptions.ConnectionError:
-        print("[AGENT] ❌ Ollama not running. Start it with: ollama serve")
-        return None
-    except Exception as e:
-        print(f"[AGENT] Ollama call failed: {e}")
-        return None
+from llm.client    import chat as _call_ollama
+from config        import settings
+from rag.citations import number_sources, build_context, verify_citations, strip_invalid, confidence_label
 
 
 # ── Prompts ───────────────────────────────────────────────────
 
-ANSWER_SYSTEM = """You are an expert academic tutor. Give structured, precise answers using ONLY the context provided.
+ANSWER_SYSTEM = """You are an Enterprise Intelligence Analyst at Lexi AI answering executive & legal questions.
 
-FORMAT RULES — pick the right format based on the question:
+Give structured, precise, and authoritative answers using ONLY the provided document context.
 
-For DEFINITION questions (What is X?):
-**[Term]** — [precise one-line definition].
+OUTPUT STRUCTURE:
+**Executive Answer:** [1-2 sentence direct, decisive answer]
 
-### How it works
-[mechanism in 2-3 sentences]
+### 📌 Analysis & Explanation
+[3-4 detailed sentences synthesized directly from the retrieved document chunks]
 
-### Key Facts
-- **Fact 1**: detail
-- **Fact 2**: detail
-- **Fact 3**: detail
+### 🔑 Key Findings & Provisions
+- **Point 1**: Specific detail from document
+- **Point 2**: Specific detail from document
+- **Point 3**: Specific detail from document
 
-> 💡 **Remember:** [one memorable sentence]
-
----
-
-For PROCESS questions (How does X work? / Steps?):
-**[Process]** involves these steps:
-
-1. **[Step name]** — explanation
-2. **[Step name]** — explanation
-3. **[Step name]** — explanation
-
-### Key Insight
-[why this matters]
-
-> 💡 **Remember:** [one memorable sentence]
-
----
-
-For COMPARISON questions (Difference between X and Y?):
-### X vs Y
-
-| Aspect | **X** | **Y** |
-|--------|-------|-------|
-| Definition | ... | ... |
-| How it works | ... | ... |
-| Best used for | ... | ... |
-
-### Bottom Line
-[one sentence on when to use each]
-
-> 💡 **Remember:** [one memorable sentence]
-
----
-
-For GENERAL questions:
-**Direct Answer:** [one clear sentence]
-
-### Explanation
-[3-4 sentences expanding the answer]
-
-### Key Points
-- **Point 1**: detail
-- **Point 2**: detail
-- **Point 3**: detail
-
-> 💡 **Remember:** [one memorable sentence]
 
 STRICT RULES:
-- Answer ONLY from the provided context — never add outside knowledge
-- Bold all technical terms on first use
-- If topic is not in context: say "**Not in your notes.** This topic isn't covered in your document."
+- The context is a list of numbered sources like [1], [2]. After EVERY factual statement, cite the supporting source number(s) in square brackets, e.g. "Notice is 90 days [2]."
+- Cite ONLY numbers that appear in the context. NEVER invent a source or a number. Do not write a separate sources list.
+- Answer ONLY from the provided document context.
+- If the topic is not covered in the context, explicitly state: "**Not Found in Document Knowledge Base.** This topic is not covered in the uploaded enterprise documents."
 """
 
 
@@ -125,105 +51,88 @@ def _detect_format(question: str) -> str:
     return "general"
 
 
-def _search_notes(query: str, index, chunks: list, top_k: int = 5) -> str:
-    """Retrieve top-k relevant chunks from FAISS and return as formatted string."""
-    results = retrieve_relevant_chunks(query, index, chunks, top_k=top_k)
-    if not results:
-        return "No relevant passages found."
-    return "\n\n".join(f"[score:{s:.2f}] {c}" for c, s in results)
-
-
 def _generate_answer(question: str, context: str) -> str:
     """Call Ollama to generate a structured answer from retrieved context."""
-    fmt = _detect_format(question)
     user_msg = (
-        f"Context from student's notes:\n\n{context}\n\n"
+        f"Context from uploaded enterprise documents:\n\n{context}\n\n"
         f"---\n\n"
-        f"Question: {question}\n"
-        f"Format hint: {fmt}\n\n"
-        f"Generate a structured answer using ONLY the context above."
+        f"Question: {question}\n\n"
+        f"Generate a structured business answer using ONLY the context above."
     )
     result = _call_ollama(ANSWER_SYSTEM, user_msg, max_tokens=1000)
-    return result or "**Could not generate answer.** Ollama may not be running — try `ollama serve`."
+    return result or "**Could not generate answer.** Ollama engine offline — try `ollama serve`."
 
 
 def run_agent(question: str, index=None, chunks: list = None) -> dict:
     """
-    Main agent function. Runs synchronously.
-    Steps:
-      1. Quick answerable check
-      2. Search notes (primary query)
-      3. If comparison question, search again with second concept
-      4. Generate structured answer from retrieved context
-    Returns dict: answer, tool_calls, answerable, question
+    Main document intelligence agent: retrieve -> numbered sources -> cited answer -> verify.
+    Returns answer, numbered `citations` (each flagged `cited` if the answer references it),
+    and `citation_check` {"cited": [...], "invalid": [...]}.
     """
     if index is None or chunks is None:
         index, chunks = load_index()
 
+    def _refusal(msg: str) -> dict:
+        return {"answer": msg, "tool_calls": [], "answerable": False, "question": question,
+                "citations": [], "citation_check": {"cited": [], "invalid": []}}
+
     if index is None:
-        return {
-            "answer"    : "**No document indexed.**\n\nUpload and process your notes first.",
-            "tool_calls": [], "answerable": False, "question": question,
-        }
+        return _refusal("**No document loaded.**\n\nPlease upload and process enterprise documents in the Knowledge Base first.")
 
-    # ── Step 1: Quick relevance check ────────────────────────
-    quick = retrieve_relevant_chunks(question, index, chunks, top_k=3)
-    if not quick or not is_query_answerable(quick, threshold=0.18):
-        return {
-            "answer"    : (
-                "**Not found in your notes.**\n\n"
-                "This topic doesn't appear to be covered in your uploaded document. "
-                "Try rephrasing or check if this topic is in your notes."
-            ),
-            "tool_calls": [], "answerable": False, "question": question,
-        }
+    from rag.retriever import hybrid_search, is_query_answerable, answer_confidence
 
+    # ── Step 1: retrieve, and refuse when nothing relevant enough was found ──
     tool_log = []
+    print(f"[AGENT] 🔍 hybrid_search: '{question[:60]}'")
+    results = hybrid_search(question, index, chunks, top_k=5)
+    tool_log.append({"tool": "hybrid_search", "input": {"query": question}, "hits": len(results)})
 
-    # ── Step 2: Primary search ────────────────────────────────
-    print(f"[AGENT] 🔍 search_notes: '{question[:60]}'")
-    context1 = _search_notes(question, index, chunks, top_k=5)
-    tool_log.append({
-        "tool"  : "search_notes",
-        "input" : {"query": question},
-        "result": context1[:200] + "...",
-    })
+    if not is_query_answerable(results, threshold=settings.min_relevance):
+        return _refusal(
+            "**Not found in Enterprise Knowledge Base.**\n\n"
+            "This query does not match any information in the uploaded business documents."
+        )
 
-    all_context = context1
-
-    # ── Step 3: Second search for comparison questions ────────
-    q_lower       = question.lower()
-    is_comparison = any(w in q_lower for w in ["difference", "compare", "vs", "versus", "distinguish"])
-    if is_comparison:
-        words        = [w for w in question.split() if len(w) > 4]
+    # ── Step 2: second search for comparison questions ──
+    q_lower = question.lower()
+    if any(w in q_lower for w in ["difference", "compare", "vs", "versus", "distinguish"]):
+        words = [w for w in question.split() if len(w) > 4]
         second_query = " ".join(words[-3:]) if len(words) > 3 else question
-        print(f"[AGENT] 🔍 search_notes_again: '{second_query[:60]}'")
-        context2 = _search_notes(second_query, index, chunks, top_k=4)
-        tool_log.append({
-            "tool"  : "search_notes_again",
-            "input" : {"query": second_query},
-            "result": context2[:200] + "...",
-        })
-        all_context = context1 + "\n\n" + context2
+        print(f"[AGENT] 🔍 hybrid_search_secondary: '{second_query[:60]}'")
+        more = hybrid_search(second_query, index, chunks, top_k=4)
+        tool_log.append({"tool": "hybrid_search_secondary", "input": {"query": second_query}, "hits": len(more)})
+        results = results + more
 
-    # ── Step 4: Generate answer ───────────────────────────────
-    print(f"[AGENT] ✍️ Generating answer via Ollama ({OLLAMA_MODEL})...")
-    final_answer = _generate_answer(question, all_context[:2500])
-    tool_log.append({
-        "tool"  : "ask_ollama",
-        "input" : {"question": question, "context_length": len(all_context)},
-        "result": final_answer[:200] + "...",
-    })
+    # ── Step 3: number sources, generate, verify ──
+    sources = number_sources(results)
+    context, sources = build_context(sources)
+    print(f"[AGENT] ✍️ Generating answer via Ollama ({settings.ollama_model}) from {len(sources)} sources...")
+    answer = _generate_answer(question, context)
+    tool_log.append({"tool": "ask_ollama", "input": {"question": question, "sources": len(sources)}})
 
-    print(f"[AGENT] ✅ Done ({len(tool_log)} steps)")
+    llm_ok = not answer.startswith("**Could not generate answer.**")
+    check = {"cited": [], "invalid": []}
+    if llm_ok:
+        check = verify_citations(answer, len(sources))
+        answer = strip_invalid(answer, check["invalid"])
+        if not check["cited"]:
+            answer += "\n\n> ⚠️ This answer carries no source citations — verify it against the sources below."
+
+    top = answer_confidence(results)
+    answer += f"\n\n---\n**Retrieval confidence:** {confidence_label(top)} ({top:.0%})"
+    if check["cited"]:
+        answer += " · **Cited sources:** " + ", ".join(f"[{n}]" for n in check["cited"])
+    for s in sources:
+        s["cited"] = s["n"] in check["cited"]
+
+    print(f"[AGENT] ✅ Done ({len(tool_log)} steps, cited={check['cited']}, invalid={check['invalid']})")
     return {
-        "answer"    : final_answer,
-        "tool_calls": tool_log,
-        "answerable": True,
-        "question"  : question,
+        "answer": answer, "tool_calls": tool_log, "answerable": True, "question": question,
+        "citations": sources, "citation_check": check,
     }
 
 
 def answer_question(question: str, index=None, chunks: list = None, **kwargs) -> dict:
-    """Compatibility wrapper — same interface used in app.py."""
+    """Compatibility wrapper."""
     return run_agent(question, index, chunks)
+
