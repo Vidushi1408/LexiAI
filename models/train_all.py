@@ -1,6 +1,7 @@
 # models/train_all.py
 # Run: python -m models.train_all
 """Trains ANN, CNN, LSTM with the expanded dataset and compares them."""
+# pyrefly: ignore [missing-import]
 import os, sys, torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -12,7 +13,7 @@ from models.evaluator  import evaluate_model, compare_models
 
 
 def main():
-    print("\n🚀 StudyMate AI — Model Training\n")
+    print("\n🚀 Lexi AI — Model Training\n")
     X_tr, X_v, X_te, y_tr, y_v, y_te = prepare_dataset()
 
     print("\n── Training ANN ──")

@@ -40,168 +40,48 @@ import re
 # ── Entity type mapping ─────────────────────────────────────────
 # Map BERT's labels to human-friendly names + emojis
 ENTITY_TYPE_MAP = {
-    "PER"  : ("PERSON",       "👤"),
-    "ORG"  : ("ORGANIZATION", "🏢"),
-    "LOC"  : ("LOCATION",     "📍"),
-    "MISC" : ("MISCELLANEOUS","🔖"),
+    "PERSON"                   : ("PERSON",                   "👤"),
+    "ORGANIZATION"             : ("ORGANIZATION",             "🏢"),
+    "LOCATION"                 : ("LOCATION",                 "📍"),
+    "DATES_DEADLINES"          : ("DATES & DEADLINES",        "📅"),
+    "FINANCIAL_VALUES"         : ("FINANCIAL & CONTRACT VALUE","💰"),
+    "PAYMENT_RENEWAL"          : ("PAYMENT & RENEWAL TERMS",  "💳"),
+    "OBLIGATIONS"              : ("OBLIGATIONS & RESPONSIBILITY","📜"),
+    "PENALTY_RISKS"            : ("PENALTY & RISK CLAUSES",   "⚠️"),
+    "MISCELLANEOUS"            : ("MISCELLANEOUS",            "🔖"),
 }
 
-# Global pipeline instance (load once, reuse)
-_ner_pipeline = None
 
-
-def get_ner_pipeline():
+def _organize_entities(raw_entities: list, text: str = "") -> dict:
     """
-    Loads the BERT NER pipeline (only once).
-
-    Uses lazy loading — model loads on first call,
-    then stays in memory for fast subsequent calls.
-
-    Returns:
-        HuggingFace NER pipeline object
+    Converts raw BERT output + rule extraction into enterprise business categories.
     """
-    global _ner_pipeline
-
-    if _ner_pipeline is None:
-        print("[NER] Loading BERT NER model (first time ~30 seconds)...")
-
-        _ner_pipeline = pipeline(
-            task  = "ner",
-
-            # Pretrained BERT fine-tuned on CoNLL-2003 NER task
-            model = "dbmdz/bert-large-cased-finetuned-conll03-english",
-
-            # aggregation_strategy="simple" automatically merges
-            # subword tokens like ["Albert", "Ein", "##stein"]
-            # back into "Albert Einstein" ✅
-            aggregation_strategy = "simple",
-        )
-        print("[NER] BERT NER model loaded! ✅")
-
-    return _ner_pipeline
-
-
-def extract_entities(text: str) -> dict:
-    """
-    Extracts named entities from a text string.
-
-    Args:
-        text (str): Any text — a sentence, paragraph, or full document
-
-    Returns:
-        dict: Organized entities by type
-              {
-                "PERSON":       ["Albert Einstein", "Marie Curie"],
-                "ORGANIZATION": ["MIT", "Google"],
-                "LOCATION":     ["Paris", "New Jersey"],
-                "MISCELLANEOUS":["English", "Nobel Prize"]
-              }
-    """
-
-    if not text or not text.strip():
-        return {"PERSON": [], "ORGANIZATION": [], "LOCATION": [], "MISCELLANEOUS": []}
-
-    ner = get_ner_pipeline()
-
-    # HuggingFace NER has a max token limit (~512 tokens)
-    # For long texts, we process in chunks
-    chunks = _split_into_chunks(text, max_chars=400)
-
-    # Collect all raw entity predictions across chunks
-    all_raw_entities = []
-    for chunk in chunks:
-        if chunk.strip():
-            raw = ner(chunk)
-            all_raw_entities.extend(raw)
-
-    # Organize entities into clean categories
-    organized = _organize_entities(all_raw_entities)
-
-    return organized
-
-
-def _split_into_chunks(text: str, max_chars: int = 400) -> list:
-    """
-    Splits long text into smaller chunks for BERT processing.
-
-    BERT has a 512-token limit. We split on sentence boundaries
-    to avoid cutting words mid-sentence.
-
-    Args:
-        text (str): Full document text
-        max_chars (int): Max characters per chunk
-
-    Returns:
-        list: List of text chunk strings
-    """
-    # Split on sentence endings
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-
-    chunks   = []
-    current  = ""
-
-    for sentence in sentences:
-        # If adding this sentence keeps us under the limit, add it
-        if len(current) + len(sentence) < max_chars:
-            current += " " + sentence
-        else:
-            # Save current chunk and start a new one
-            if current.strip():
-                chunks.append(current.strip())
-            current = sentence
-
-    # Don't forget the last chunk
-    if current.strip():
-        chunks.append(current.strip())
-
-    return chunks
-
-
-def _organize_entities(raw_entities: list) -> dict:
-    """
-    Converts raw HuggingFace output into a clean organized dict.
-
-    Raw output looks like:
-    [
-      {"entity_group": "PER", "word": "Albert Einstein", "score": 0.998},
-      {"entity_group": "LOC", "word": "New Jersey",      "score": 0.991},
-      ...
-    ]
-
-    Args:
-        raw_entities (list): Raw output from HuggingFace NER pipeline
-
-    Returns:
-        dict: Clean {entity_type: [entity_strings]} dictionary
-    """
-
     organized = {
-        "PERSON"        : [],
-        "ORGANIZATION"  : [],
-        "LOCATION"      : [],
-        "MISCELLANEOUS" : [],
+        "PERSON"                  : [],
+        "ORGANIZATION"            : [],
+        "LOCATION"                : [],
+        "DATES_DEADLINES"         : [],
+        "FINANCIAL_VALUES"        : [],
+        "PAYMENT_RENEWAL"         : [],
+        "OBLIGATIONS"             : [],
+        "PENALTY_RISKS"           : [],
+        "MISCELLANEOUS"           : [],
     }
 
-    seen = set()  # Track duplicates
+    seen = set()
 
     for entity in raw_entities:
         entity_group = entity.get("entity_group", "")
         word         = entity.get("word", "").strip()
         score        = entity.get("score", 0.0)
 
-        # Only accept high-confidence predictions (above 80%)
-        if score < 0.80:
+        if score < 0.75:
             continue
 
-        # Clean up BERT artifacts
-        # BERT sometimes produces "##suffix" tokens — remove them
         word = re.sub(r"##", "", word).strip()
-
-        # Skip very short or already-seen entities
         if len(word) < 2 or word.lower() in seen:
             continue
 
-        # Map entity group to our organized categories
         if entity_group == "PER":
             organized["PERSON"].append(word)
         elif entity_group == "ORG":
@@ -211,79 +91,98 @@ def _organize_entities(raw_entities: list) -> dict:
         elif entity_group == "MISC":
             organized["MISCELLANEOUS"].append(word)
 
-        seen.add(word.lower())  # Mark as seen
+        seen.add(word.lower())
+
+    # Business Regex & Rule-Based Extractors
+    if text:
+        # Dates & Deadlines
+        dates = re.findall(r"\b(?:\d{1,2}[-/th|st|nd|rd]*\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*|\d{4}[-/]\d{2}[-/]\d{2}|within \d+ days|deadline|effective date)\b", text, re.IGNORECASE)
+        for d in dates:
+            if d.lower() not in seen and len(d) > 3:
+                organized["DATES_DEADLINES"].append(d.strip())
+                seen.add(d.lower())
+
+        # Financial Values & Contract Values
+        fin = re.findall(r"(?:[\$€£₹]\s?\d+(?:,\d+)*(?:\.\d+)?|\b\d+\s?(?:USD|INR|EUR|GBP|million|billion|k)\b)", text, re.IGNORECASE)
+        for f in fin:
+            if f.lower() not in seen:
+                organized["FINANCIAL_VALUES"].append(f.strip())
+                seen.add(f.lower())
+
+        # Payment & Renewal Terms
+        terms = re.findall(r"\b(?:Net \d+|auto-renew[a-z]*|annual renewal|monthly billing|grace period|upfront payment)\b", text, re.IGNORECASE)
+        for t in terms:
+            if t.lower() not in seen:
+                organized["PAYMENT_RENEWAL"].append(t.strip())
+                seen.add(t.lower())
+
+        # Obligations & Sentence Analysis
+        sents = re.split(r'(?<=[.!?])\s+', text)
+        for s in sents:
+            sl = s.lower()
+            if any(k in sl for k in ["shall", "must", "agrees to", "responsible for", "obligat"]):
+                if len(s.strip()) > 15 and s.strip() not in organized["OBLIGATIONS"]:
+                    organized["OBLIGATIONS"].append(s.strip()[:140])
+            if any(k in sl for k in ["penalty", "liability", "indemni", "breach", "termination", "liquidated damages"]):
+                if len(s.strip()) > 15 and s.strip() not in organized["PENALTY_RISKS"]:
+                    organized["PENALTY_RISKS"].append(s.strip()[:140])
 
     return organized
 
 
+def extract_entities(text: str) -> dict:
+    """Extracts named business entities and contract clauses from text."""
+    if not text or not text.strip():
+        return {k: [] for k in ENTITY_TYPE_MAP.keys()}
+
+    ner = get_ner_pipeline()
+    chunks = _split_into_chunks(text, max_chars=400)
+
+    all_raw_entities = []
+    for chunk in chunks:
+        if chunk.strip():
+            try:
+                raw = ner(chunk)
+                all_raw_entities.extend(raw)
+            except Exception as e:
+                print(f"[NER] Chunk error: {e}")
+
+    organized = _organize_entities(all_raw_entities, text=text)
+    return organized
+
+
 def format_entities_for_display(entities: dict) -> str:
-    """
-    Formats extracted entities into a readable string for display
-    in the Streamlit UI or terminal output.
-
-    Args:
-        entities (dict): Output from extract_entities()
-
-    Returns:
-        str: Nicely formatted multi-line string
-    """
-
-    lines = ["📌 **Extracted Named Entities**\n"]
-
+    """Formats extracted business entities and clauses into readable markdown."""
+    lines = ["📌 **Extracted Business Entities & Contract Clauses**\n"]
     total = sum(len(v) for v in entities.values())
 
     if total == 0:
-        return "No named entities found in this text."
+        return "No business entities or contract clauses detected in this document."
 
-    for entity_type, words in entities.items():
+    for key, (label, emoji) in ENTITY_TYPE_MAP.items():
+        words = entities.get(key, [])
         if not words:
             continue
 
-        # Get emoji for this entity type
-        # Find matching key in ENTITY_TYPE_MAP
-        emoji = "🔖"  # default
-        for key, (name, em) in ENTITY_TYPE_MAP.items():
-            if name == entity_type:
-                emoji = em
-                break
-
-        lines.append(f"{emoji} **{entity_type}** ({len(words)} found):")
-        for word in words:
+        lines.append(f"{emoji} **{label}** ({len(words)} extracted):")
+        for word in words[:8]:
             lines.append(f"   • {word}")
-        lines.append("")  # Blank line between groups
+        if len(words) > 8:
+            lines.append(f"   • *...and {len(words)-8} more*")
+        lines.append("")
 
-    lines.append(f"Total entities found: {total}")
+    lines.append(f"Total Provisions & Entities Extracted: {total}")
     return "\n".join(lines)
 
 
 def extract_entities_from_sentences(sentences: list) -> list:
-    """
-    Runs NER on each sentence individually and returns
-    a list of (sentence, entities) pairs.
-
-    Useful for the Streamlit UI to show which sentence
-    each entity came from.
-
-    Args:
-        sentences (list): List of sentence strings
-
-    Returns:
-        list: [ (sentence_str, entities_dict), ... ]
-    """
-
+    """Runs entity & clause extraction across document sentences."""
     results = []
-    ner     = get_ner_pipeline()
-
     for sentence in sentences:
         if not sentence.strip():
             continue
-
-        raw      = ner(sentence)
-        entities = _organize_entities(raw)
-
-        # Only include sentences that actually have entities
+        entities = _organize_entities([], text=sentence)
         total = sum(len(v) for v in entities.values())
         if total > 0:
             results.append((sentence, entities))
-
     return results

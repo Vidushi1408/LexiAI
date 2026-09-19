@@ -1,185 +1,112 @@
-# 🎓 StudyMate AI — GenAI Smart Study Assistant
+# 🏢 Lexi AI — Enterprise Document Intelligence Platform
 
-> Transform your study notes into summaries, quizzes, concept explanations, and an AI-powered Q&A chatbot — all running locally with no cloud dependency.
-
----
-
-## 📌 What It Does
-
-Upload any PDF or TXT study material and instantly get:
-
-| Feature | Description |
-|---------|-------------|
-| 📋 **Smart Summary** | Claude generates structured summaries with sections, bullet points, and key takeaways |
-| 📝 **Quiz Generator** | Exam-level MCQ questions with scenarios, explanations, and visual aids |
-| 🔑 **Key Concepts** | BERT extracts named entities · Claude explains any concept · ANN classifies sentences |
-| 💬 **Chat with Notes** | Multi-tool RAG agent answers questions grounded only in your uploaded notes |
+> **Your Documents. Your Decisions. Instantly.**
+> Transform contracts, SOPs, financial statements, reports, emails, and meeting transcripts into executive briefings, compliance checks, risk extraction, and cited answers in seconds.
 
 ---
 
-## 🛠️ Tech Stack
+## 📌 Core Platform Features
+
+| Capability | Description |
+|------------|-------------|
+| 📋 **Executive Briefing** | Structured C-Suite briefs with *Bottom Line*, *Key Decisions*, *Major Risks*, *Key Numbers*, *Recommended Actions*, and *Confidence Scores*. |
+| ✅ **Compliance Checker** | Evaluate business documents against regulatory policies (GDPR, CCPA, SLAs, Liability Caps) with PASS/FAIL/REVIEW statuses and recommendations. |
+| 🏷️ **Entity & Clause Extraction** | Extract Organizations, People, Dates, Deadlines, Financial Values, Payment Terms, Penalty Clauses, Obligations, and Risk Clauses into visual cards. |
+| ⚡ **Action Item Extractor** | Categorize tasks from meeting transcripts, emails, and notes into High, Medium, and Low priorities with Owner, Deadline, and Status tags. |
+| 💬 **Document Q&A & RAG** | Multi-tool document intelligence agent answering executive questions with exact document citations and confidence scores. |
+| 🔎 **Hybrid Search** | Combine **BM25 keyword matching** and **FAISS dense vector search** with score blending and keyword highlights. |
+| 📚 **Multi-Format Knowledge Base** | Ingest **PDF, DOCX, XLSX, PPTX, CSV, TXT, MD, EML, and Audio (MP3/WAV)** with Whisper AI transcription. |
+| 📊 **Executive Dashboard** | Live operational metrics across active knowledge bases, compliance issue tracking, and knowledge coverage. |
+
+---
+
+## 🛠️ Architecture & Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| UI | Streamlit |
-| NLP Preprocessing | NLTK · spaCy · Regex |
-| Text Classification | PyTorch · ANN · CNN · LSTM |
-| Embeddings | SentenceTransformers (`all-MiniLM-L6-v2`) |
-| Named Entity Recognition | BERT (`dbmdz/bert-large-cased-finetuned-conll03-english`) |
-| Vector Search | FAISS |
-| Generative AI | Anthropic Claude API (`claude-haiku-4-5`) |
-| Summarization | Claude API (structured prompt engineering) |
-| RAG | FAISS retrieval + Claude generation |
+| **UI Framework** | Streamlit (Dark SaaS Professional Theme) |
+| **NLP Preprocessing** | NLTK · spaCy · Regex |
+| **Text Classification** | PyTorch · ANN · CNN · LSTM |
+| **Sentence Embeddings** | SentenceTransformers (`all-MiniLM-L6-v2`) |
+| **Named Entity Recognition** | BERT (`dbmdz/bert-large-cased-finetuned-conll03-english`) + Lexi Rule Extractors |
+| **Vector Indexing & Search** | FAISS + Rank-BM25 (Hybrid Search Engine) |
+| **Generative LLM Engine** | Ollama (LLaMA 3.2 3B / Mistral) |
+| **Document Ingestion** | PyMuPDF · python-docx · openpyxl · python-pptx · pandas · email · Whisper AI |
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```
-StudyMateAI/
+LEXI AI/
 │
-├── app.py                          # Main Streamlit application
-├── requirements.txt                # All dependencies
+├── app.py                          # Main Lexi AI Streamlit Application
+├── requirements.txt                # Enterprise Python Dependencies
+├── README.md                       # Platform Documentation
 │
-├── preprocessing/                  # NLP pipeline
-│   ├── cleaner.py                  # Text cleaning and noise removal
-│   ├── tokenizer.py                # Tokenization and stopword removal
-│   ├── lemmatizer.py               # Lemmatization with POS tagging
-│   └── pipeline.py                 # Full pipeline orchestration
+├── preprocessing/                  # Text Cleaning & Tokenization Pipeline
+│   ├── cleaner.py                  # Noise removal & regex cleaning
+│   ├── tokeniser.py                # Tokenization & stopword removal
+│   ├── lemmatizer.py               # Lemmatization & POS tagging
+│   └── pipeline.py                 # Pipeline orchestrator
 │
-├── embeddings/                     # Vector representations
-│   ├── one_hot.py                  # One-hot and Bag-of-Words encoding
-│   └── sentence_embeddings.py      # SentenceTransformer embeddings
+├── embeddings/                     # Vector Representations
+│   ├── one_hot.py                  # One-hot & Bag-of-Words encoders
+│   └── sentence_embeddings.py      # SentenceTransformers (384-dim vectors)
 │
-├── models/                         # Text classification
-│   ├── training_data.py            # 360+ labeled training sentences
-│   ├── data_prep.py                # Dataset preparation and splitting
+├── models/                         # Provision & Text Classification
+│   ├── training_data.py            # Sentence dataset
+│   ├── data_prep.py                # Data split helper
 │   ├── ann_model.py                # Artificial Neural Network
 │   ├── cnn_model.py                # Convolutional Neural Network
 │   ├── lstm_model.py               # Long Short-Term Memory Network
-│   ├── evaluator.py                # Performance metrics (F1, Accuracy)
-│   ├── train_all.py                # Master training script
-│   └── saved/                      # Trained model weights (.pt files)
+│   ├── evaluator.py                # Evaluation metrics
+│   ├── train_all.py                # Model training suite
+│   └── saved/                      # Model checkpoints
 │
 ├── ner/
-│   └── ner_extractor.py            # BERT-based Named Entity Recognition
+│   └── ner_extractor.py            # BERT NER + Business & Contract Clause Extractor
 │
-├── generative/                     # AI content generation
-│   ├── summarizer.py               # Structured summarization via Claude
-│   ├── quiz_generator.py           # MCQ generation via Claude
-│   └── explainer.py                # Concept explanation via Claude
+├── generative/                     # Business Intelligence Generators
+│   ├── summarizer.py               # Executive Briefing generator
+│   ├── quiz_generator.py           # Compliance Checker engine
+│   ├── explainer.py                # Clause & Provision explainer
+│   └── action_item_extractor.py    # Action Item Extractor from transcripts/emails
 │
 ├── rag/                            # Retrieval-Augmented Generation
-│   ├── indexer.py                  # Chunk text → embed → FAISS index
-│   ├── retriever.py                # Semantic search over FAISS
-│   ├── qa_chain.py                 # Direct Q&A chain (fallback)
-│   └── agent.py                    # Multi-tool agentic RAG loop
+│   ├── indexer.py                  # Chunking & FAISS Vector indexing
+│   ├── retriever.py                # Hybrid Search Engine (BM25 + Vector)
+│   ├── qa_chain.py                 # QA Chain helper
+│   └── agent.py                    # Multi-tool Agentic Document Q&A loop
 │
 ├── utils/
-│   ├── pdf_reader.py               # PDF and TXT text extraction
-│   └── file_handler.py             # Save/load processed data
+│   ├── pdf_reader.py               # Multi-format reader (PDF, DOCX, XLSX, PPTX, CSV, EML, MP3)
+│   └── file_handler.py             # Data persistence utilities
 │
-└── data/
-    ├── raw/                        # Uploaded files (auto-populated)
-    └── processed/                  # FAISS index and chunks (auto-populated)
+└── data/                           # Active Knowledge Base storage
 ```
 
 ---
 
-## ⚙️ Setup & Installation
+## ⚙️ Quickstart Guide
 
-### Requirements
-- Python 3.11 (not 3.12+)
-- macOS / Linux / Windows
-
-### Steps
+### Setup Virtual Environment
 
 ```bash
-# 1. Clone and enter the project
-cd StudyMateAI
-
-# 2. Create virtual environment with Python 3.11
-python3.11 -m venv venv
-source venv/bin/activate          # Mac/Linux
-# venv\Scripts\activate           # Windows
-
-# 3. Install dependencies
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+```
 
-# 4. Download NLP models
-python -m spacy download en_core_web_sm
-python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
+### Run Lexi AI Platform
 
-# 5. Train the classifiers (one-time, ~5 minutes)
-python -m models.train_all
-
-# 6. Launch the app
+```bash
 streamlit run app.py
 ```
 
-Open **http://localhost:8501** in your browser.
+### Local LLM Engine (Optional for Generative Features)
 
----
-
-## 🧠 How RAG Works
-
-RAG (Retrieval-Augmented Generation) is the engine behind the Chat tab.
-
+```bash
+ollama serve
+ollama pull llama3.2:3b
 ```
-Your Notes
-    │
-    ▼
-Split into chunks → Embed with SentenceTransformer → Store in FAISS
-                                                            │
-                                            ┌───────────────┘
-                                            │  At query time:
-User Question ──► Embed ──► FAISS Search ──► Top 5 relevant chunks
-                                            │
-                                            ▼
-                              Claude reads ONLY those chunks
-                                            │
-                                            ▼
-                         Structured answer grounded in your notes ✅
-```
-
-**Why it matters:** Claude cannot hallucinate — it only answers from what your notes actually say. If the topic isn't in your notes, it says so.
-
----
-
-## 🤖 Where Models Are Used
-
-| Model | Location | Purpose |
-|-------|----------|---------|
-| ANN / CNN / LSTM | `models/` → Tab 3 | Classify sentences as Definition / Concept / Example / Important Point |
-| SentenceTransformer | `embeddings/` → everywhere | Convert text to 384-dim vectors for FAISS and classification |
-| BERT NER | `ner/` → Tab 3 | Extract People, Organizations, Locations from notes |
-| Claude API | `generative/` + `rag/` | Summarization, Quiz generation, Explanation, Chat answers |
-| FAISS | `rag/` → Tab 4 | Store and search vector embeddings for RAG |
-
----
-
-## 👥 Team Contributions
-
-| Member | Roll | Contribution |
-|--------|------|-------------|
-| **Ashi Srivastava** | — | **Data collection and NLP preprocessing pipeline** — tokenization, stopword removal, lemmatization, and text cleaning modules |
-| **Parth Nawal** | — | **Embeddings and Named Entity Recognition** — SentenceTransformer integration, one-hot encoding, BERT NER implementation |
-| **Simran Karan Bora** | — | **Deep learning models** — design, training, and evaluation of ANN, CNN, and LSTM classifiers with F1-score comparison |
-| **Vidushi Bhadauria** | — | **Application integration** — main app.py, Streamlit UI, module wiring, and complete project compilation |
-| **Aryama Sharma** | — | **Generative AI and RAG** — summarizer, quiz generator, concept explainer, FAISS indexing, and multi-tool agent |
-
----
-
-## 📊 Model Performance (after training)
-
-| Model | Accuracy | F1-Score |
-|-------|----------|---------|
-| ANN   | ~88%     | ~0.87   |
-| CNN   | ~90%     | ~0.89   |
-| LSTM  | ~88%     | ~0.87   |
-
-*Trained on 500+ samples across 12 academic subjects.*
-
----
-
-*Built with Python · NLP · HuggingFace · FAISS · Anthropic Claude*
