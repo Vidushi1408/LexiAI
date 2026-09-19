@@ -1,0 +1,57 @@
+{
+  "documents": [
+    {
+      "name": "service_agreement.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "This Master Services Agreement is entered into between Northwind Analytics Ltd. (the Provider) and Contoso Retail Inc. (the Client) on 1 March 2025. The Provider will deliver a cloud data platform and related support services. The initial term of this Agreement is thirty-six months from the effective date. The Agreement renews automatically for successive twelve-month periods unless either party gives notice of non-renewal."},
+        {"page": 2, "label": "Page 2", "text": "The Client shall pay a monthly subscription fee of USD 18,500, invoiced on the first business day of each month. Payment is due within thirty days of the invoice date. Late payments accrue interest at 1.5 percent per month. If an invoice remains unpaid for sixty days the Provider may suspend the services after written warning."},
+        {"page": 3, "label": "Page 3", "text": "The Provider guarantees platform availability of 99.9 percent per calendar month, excluding scheduled maintenance. If availability falls below this level the Client receives a service credit of five percent of the monthly fee for each full hour of downtime, capped at thirty percent. Support requests classified as critical will receive a response within one hour."},
+        {"page": 4, "label": "Page 4", "text": "Either party may terminate this Agreement for convenience with ninety days written notice. Either party may terminate immediately if the other commits a material breach that is not cured within thirty days of written notice. On termination the Provider will return or delete all Client data within fourteen days."},
+        {"page": 5, "label": "Page 5", "text": "The total aggregate liability of the Provider under this Agreement is limited to the fees paid in the twelve months preceding the claim. Neither party is liable for indirect or consequential damages. The Provider shall indemnify the Client against third party intellectual property claims arising from the platform. This Agreement is governed by the laws of England and Wales and the courts of London have exclusive jurisdiction."}
+      ]
+    },
+    {
+      "name": "nda_acme_globex.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "This Non-Disclosure Agreement is made between Acme Robotics GmbH and Globex Capital LLP to evaluate a potential acquisition. Confidential Information means all non-public financial, technical and commercial information disclosed by either party, whether oral or written. The receiving party must use Confidential Information solely for the purpose of evaluating the transaction."},
+        {"page": 2, "label": "Page 2", "text": "The receiving party shall protect Confidential Information with at least the same degree of care it uses for its own confidential material, and no less than reasonable care. Disclosure is permitted only to employees and advisers who need to know and are bound by written confidentiality duties. Personal data shared under this Agreement must be processed in accordance with the GDPR."},
+        {"page": 3, "label": "Page 3", "text": "The confidentiality obligations survive for five years after the date of termination. Upon written request the receiving party will return or destroy all Confidential Information within ten business days. This Agreement is governed by the laws of Germany and any dispute will be settled by arbitration in Frankfurt under DIS rules."}
+      ]
+    },
+    {
+      "name": "board_meeting_notes.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "Board meeting notes, 12 June 2025. Attendees: Maria Lopez (CFO), David Chen (CTO), Sara Ahmed (COO). The board approved the FY26 budget of 4.2 million dollars. Maria will circulate the final budget pack to all directors by Friday 20 June. David will present the cloud migration plan at the July meeting. Sara to hire two data engineers before the end of Q3. The main risk raised was vendor concentration in the payments stack, and the board asked management to prepare a mitigation proposal by 30 July."}
+      ]
+    }
+  ],
+  "questions": [
+    {"q": "Who are the parties to the Master Services Agreement?", "doc": "service_agreement.pdf", "page": 1, "must_contain": "Northwind Analytics", "answerable": true},
+    {"q": "How long is the initial term of the service agreement?", "doc": "service_agreement.pdf", "page": 1, "must_contain": "thirty-six months", "answerable": true},
+    {"q": "What is the monthly subscription fee?", "doc": "service_agreement.pdf", "page": 2, "must_contain": "18,500", "answerable": true},
+    {"q": "What interest applies to late payments?", "doc": "service_agreement.pdf", "page": 2, "must_contain": "1.5 percent", "answerable": true},
+    {"q": "What uptime does the provider guarantee?", "doc": "service_agreement.pdf", "page": 3, "must_contain": "99.9 percent", "answerable": true},
+    {"q": "What service credit is given if availability drops?", "doc": "service_agreement.pdf", "page": 3, "must_contain": "service credit", "answerable": true},
+    {"q": "What is the notice period to terminate for convenience?", "doc": "service_agreement.pdf", "page": 4, "must_contain": "ninety days", "answerable": true},
+    {"q": "How quickly must client data be deleted after termination?", "doc": "service_agreement.pdf", "page": 4, "must_contain": "fourteen days", "answerable": true},
+    {"q": "What is the cap on the provider's liability?", "doc": "service_agreement.pdf", "page": 5, "must_contain": "twelve months preceding", "answerable": true},
+    {"q": "Which law governs the service agreement and which courts have jurisdiction?", "doc": "service_agreement.pdf", "page": 5, "must_contain": "England and Wales", "answerable": true},
+    {"q": "What is the purpose of the NDA between Acme and Globex?", "doc": "nda_acme_globex.pdf", "page": 1, "must_contain": "potential acquisition", "answerable": true},
+    {"q": "How must the receiving party protect confidential information?", "doc": "nda_acme_globex.pdf", "page": 2, "must_contain": "same degree of care", "answerable": true},
+    {"q": "Which data protection regulation applies to personal data in the NDA?", "doc": "nda_acme_globex.pdf", "page": 2, "must_contain": "GDPR", "answerable": true},
+    {"q": "How long do the confidentiality obligations survive?", "doc": "nda_acme_globex.pdf", "page": 3, "must_contain": "five years", "answerable": true},
+    {"q": "Where will NDA disputes be arbitrated?", "doc": "nda_acme_globex.pdf", "page": 3, "must_contain": "Frankfurt", "answerable": true},
+    {"q": "What budget did the board approve?", "doc": "board_meeting_notes.txt", "page": 1, "must_contain": "4.2 million", "answerable": true},
+    {"q": "Who will circulate the final budget pack and by when?", "doc": "board_meeting_notes.txt", "page": 1, "must_contain": "Maria will circulate", "answerable": true},
+    {"q": "What risk did the board raise?", "doc": "board_meeting_notes.txt", "page": 1, "must_contain": "vendor concentration", "answerable": true},
+    {"q": "What is the company's parental leave policy?", "answerable": false},
+    {"q": "Which cryptocurrency wallet does the provider use?", "answerable": false},
+    {"q": "What are the office hours of the London branch?", "answerable": false},
+    {"q": "Who won the football world cup?", "answerable": false},
+    {"q": "What is the recipe for chocolate cake?", "answerable": false}
+  ],
+  "compliance": [
+    {"doc": "service_agreement.pdf", "expect": {"Termination & Notice Period": "PASS", "Data Protection & Confidentiality": "REVIEW", "Limitation of Liability & Indemnity": "PASS", "Payment Terms & Penalties": "PASS", "SLA & Performance Commitments": "PASS", "Governing Law & Dispute Resolution": "PASS"}},
+    {"doc": "nda_acme_globex.pdf", "expect": {"Termination & Notice Period": "REVIEW", "Data Protection & Confidentiality": "PASS", "Limitation of Liability & Indemnity": "REVIEW", "Payment Terms & Penalties": "REVIEW", "SLA & Performance Commitments": "REVIEW", "Governing Law & Dispute Resolution": "PASS"}}
+  ]
+}
