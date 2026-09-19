@@ -6,3 +6,13 @@ venv/
 .DS_Store
 __pycache__/
 .idea/
+
+# Environment / secrets
+.env
+
+# Generated artifacts
+*.pyc
+.pytest_cache/
+rag/saved_index/
+models/embed_cache/
+data/processed/
