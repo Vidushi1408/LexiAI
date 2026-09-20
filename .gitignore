@@ -16,3 +16,5 @@ __pycache__/
 rag/saved_index/
 models/embed_cache/
 data/processed/
+data/audit/
+data/auth/

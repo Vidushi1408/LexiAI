@@ -62,6 +62,7 @@ def index_document(
     save: bool = True,
     force: bool = False,
     pages: list[dict] | None = None,
+    persist: bool = True,
 ):
     """
     Build (or load from cache) a FAISS index for the given text.
@@ -74,7 +75,11 @@ def index_document(
     import faiss
     from embeddings.sentence_embeddings import embed_sentences
 
-    os.makedirs(_INDEX_DIR, exist_ok=True)
+    if not persist:                 # zero-retention: never read or write anything on disk
+        save = False
+        force = True
+    else:
+        os.makedirs(_INDEX_DIR, exist_ok=True)
     current_hash = _text_hash(text + "".join(f"|{p.get('doc')}:{p.get('page')}" for p in pages or []))
 
     # ── Cache hit ──────────────────────────────────────────────────────────────
@@ -101,7 +106,7 @@ def index_document(
               else _chunk_text(text, chunk_size=chunk_size, overlap=overlap))
     print(f"[INDEX] {len(chunks)} chunks created")
 
-    vecs = embed_sentences(chunks, use_cache=True)    # safe — cache key is hash of sentences
+    vecs = embed_sentences(chunks, use_cache=persist)    # safe — cache key is hash of sentences
     vecs = vecs.astype(np.float32)
 
     dim   = vecs.shape[1]
