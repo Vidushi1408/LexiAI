@@ -27,6 +27,7 @@ def _transcribe_audio(file_bytes: bytes, file_name: str) -> str:
     """
     Transcribes audio (MP3/WAV) using Whisper model if available.
     """
+    tmp_path = None
     try:
         import whisper
         import tempfile
@@ -38,11 +39,13 @@ def _transcribe_audio(file_bytes: bytes, file_name: str) -> str:
         print(f"[LEXI READ] Transcribing audio with Whisper: {file_name}")
         model = whisper.load_model("tiny")
         res = model.transcribe(tmp_path)
-        os.remove(tmp_path)
         return res.get("text", "").strip()
     except Exception as e:
         print(f"[LEXI READ] Whisper audio transcription fallback: {e}")
         return f"[Audio Transcript: {file_name}]\n(Audio transcription model initialization completed. File recorded for analysis.)"
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)   # never leave uploaded audio on disk
 
 
 class _NamedBytes:

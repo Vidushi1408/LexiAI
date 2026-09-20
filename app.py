@@ -128,6 +128,72 @@ def init_session_state():
 
 init_session_state()
 
+from audit import log as audit
+
+
+def _e(value) -> str:
+    """HTML-escape untrusted text (document content, model output) before putting it in unsafe HTML."""
+    return html.escape(str(value))
+
+
+def _audit(action: str, **details):
+    """Record an audit event for the current user (metadata only — never document text)."""
+    try:
+        audit.record(action, user=(st.session_state.get("user") or {}).get("username", "anonymous"), **details)
+    except OSError as e:
+        print(f"[AUDIT] could not write audit log: {e}")
+
+
+# ════════════════════════════════════════════════════════════════
+#  AUTHENTICATION
+# ════════════════════════════════════════════════════════════════
+from auth import users as auth_users, roles as auth_roles
+from config import settings as _cfg
+
+
+def _login_screen():
+    st.markdown("## 🏢 Lexi AI")
+    st.caption("Enterprise Document Intelligence Platform")
+    if not auth_users.has_users():
+        st.info("First-time setup — create the administrator account.")
+        with st.form("setup_admin"):
+            u = st.text_input("Administrator username")
+            p1 = st.text_input("Password (min 10 characters)", type="password")
+            p2 = st.text_input("Confirm password", type="password")
+            if st.form_submit_button("Create administrator", type="primary"):
+                if p1 != p2:
+                    st.error("Passwords do not match.")
+                else:
+                    try:
+                        auth_users.create_user(u, p1, "admin")
+                        st.session_state.user = {"username": u.strip().lower(), "role": "admin"}
+                        _audit("user_created", target=u.strip().lower(), role="admin", first_run=True)
+                        _audit("login_success")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
+    else:
+        with st.form("login"):
+            u = st.text_input("Username")
+            p = st.text_input("Password", type="password")
+            if st.form_submit_button("Sign in", type="primary"):
+                user, msg = auth_users.authenticate(u, p)
+                if user:
+                    st.session_state.user = user
+                    _audit("login_success")
+                    st.rerun()
+                else:
+                    # log a fingerprint, not the typed text (people sometimes paste passwords into the username box)
+                    audit.record("login_failed", user="anonymous", attempted=audit.fingerprint(u.strip().lower()))
+                    st.error(msg)
+    st.stop()
+
+
+if _cfg.auth_enabled and not st.session_state.get("user"):
+    _login_screen()
+
+_ROLE = (st.session_state.get("user") or {}).get("role", "admin")   # auth disabled => full access
+
 # ════════════════════════════════════════════════════════════════
 #  SIDEBAR NAVIGATION
 # ════════════════════════════════════════════════════════════════
@@ -137,6 +203,16 @@ with st.sidebar:
     from llm.client import health_check
     _llm_ok, _llm_msg = health_check()
     (st.success if _llm_ok else st.warning)(_llm_msg)
+    from config import settings as _settings
+    st.session_state.zero_retention = st.toggle(
+        "🔒 Zero-retention mode", value=st.session_state.get("zero_retention", _settings.zero_retention),
+        help="Nothing about your documents is written to disk: no saved index, no embedding cache.")
+    if st.session_state.get("user"):
+        st.caption(f"👤 **{st.session_state.user['username']}** · {_ROLE}")
+        if st.button("Sign out", use_container_width=True):
+            _audit("logout")
+            st.session_state.clear()
+            st.rerun()
     st.markdown("---")
 
     nav_options = [
@@ -150,9 +226,11 @@ with st.sidebar:
         "⚡ Action Item Extractor",
         "📁 Document Clustering & Tagging",
         "🔎 Hybrid Search",
+        "🛡️ Audit Log",
         "⚙️ Settings",
         "💳 Billing & Pricing",
     ]
+    nav_options = auth_roles.allowed_pages(_ROLE, nav_options)
     
     selected_nav = st.radio("Platform Navigation", nav_options, index=0)
     st.session_state.view_page = selected_nav
@@ -161,7 +239,7 @@ with st.sidebar:
     st.markdown("### 📥 Document Ingestion")
     st.caption("Upload Contracts, SOPs, Financials, Reports, EML, MP3/WAV")
     
-    uploaded_files = st.file_uploader(
+    uploaded_files = None if not auth_roles.can_upload(_ROLE) else st.file_uploader(
         "Supported formats: PDF, DOCX, XLSX, PPTX, CSV, TXT, EML, MP3",
         type=["pdf", "docx", "xlsx", "xls", "pptx", "csv", "txt", "md", "eml", "mp3", "wav"],
         label_visibility="collapsed",
@@ -172,17 +250,27 @@ with st.sidebar:
         new_key = "_".join(sorted(f.name for f in uploaded_files))
         if st.session_state.file_name != new_key:
             from utils.pdf_reader import load_uploaded_file_pages
-            combined_text, loaded, failed, all_pages = "", [], [], []
+            from utils.upload_guard import validate_upload, safe_filename
+            from rag.injection import scan as scan_injection
+            combined_text, loaded, failed, all_pages, flagged = "", [], [], [], {}
             with st.spinner(f"Ingesting {len(uploaded_files)} document(s)..."):
                 for uf in uploaded_files:
+                    safe = safe_filename(uf.name)
+                    ok, reason = validate_upload(uf.name, uf.getvalue())
+                    if not ok:
+                        failed.append(f"{safe} — {reason}")
+                        _audit("upload_rejected", document=safe, reason=reason)
+                        continue
                     pages = load_uploaded_file_pages(uf)
                     txt = "\n\n".join(p["text"] for p in pages)
                     if txt and len(txt.strip()) > 30:
-                        combined_text += f"\n\n=== {uf.name} ===\n\n{txt}"
-                        loaded.append(uf.name)
-                        all_pages.extend({**p, "doc": uf.name} for p in pages)
+                        combined_text += f"\n\n=== {safe} ===\n\n{txt}"
+                        loaded.append(safe)
+                        all_pages.extend({**p, "doc": safe} for p in pages)
+                        if hits := scan_injection(txt):
+                            flagged[safe] = hits
                     else:
-                        failed.append(uf.name)
+                        failed.append(f"{safe} — no readable text")
 
             if combined_text.strip():
                 st.session_state.raw_text  = combined_text.strip()
@@ -193,12 +281,21 @@ with st.sidebar:
                 st.session_state.compliance_result = None
                 st.session_state.entities_result = None
                 st.session_state.action_items_result = None
+                _audit("documents_uploaded", documents=loaded, failed=failed, pages=len(all_pages))
                 for name in loaded:
                     st.success(f"✅ {name}")
                 for name in failed:
                     st.error(f"❌ {name}")
+                for name, hits in flagged.items():
+                    st.warning(f"⚠️ {name} contains text that looks like instructions to an AI ({', '.join(hits)}). "
+                               "It will be treated as data only — review the document before relying on results.")
+                    _audit("injection_suspected", document=name, patterns=hits)
             else:
-                st.error("❌ Unsupported or unreadable files.")
+                st.session_state.file_name = new_key   # don't re-validate (and re-audit) on every Streamlit rerun
+                for name in failed:
+                    st.error(f"❌ {name}")
+                if not failed:
+                    st.error("❌ Unsupported or unreadable files.")
 
     if st.session_state.raw_text and not st.session_state.processed:
         st.markdown("---")
@@ -213,10 +310,12 @@ with st.sidebar:
 
                 from rag.indexer import index_document
                 idx, chunks = index_document(st.session_state.raw_text, chunk_size=3, overlap=1, save=True,
-                                          pages=st.session_state.get("pages"))
+                                          pages=st.session_state.get("pages"),
+                                          persist=not st.session_state.zero_retention)
                 st.session_state.faiss_index = idx
                 st.session_state.chunks      = chunks
                 st.session_state.processed   = True
+                _audit("knowledge_base_processed", chunks=len(chunks), zero_retention=st.session_state.zero_retention)
                 st.success("✅ Knowledge Base Processed Successfully!")
                 st.rerun()
 
@@ -224,7 +323,9 @@ with st.sidebar:
         st.markdown("---")
         if st.button("🔄 Upload New Documents", use_container_width=True):
             st.session_state.raw_text = None
+            st.session_state.faiss_index, st.session_state.chunks, st.session_state.pages = None, [], None
             st.session_state.processed = False
+            _audit("session_cleared")
             st.session_state.pipeline_result = None
             st.rerun()
 
@@ -326,6 +427,7 @@ elif selected_nav == "📋 Executive Briefings":
             with st.spinner("Generating C-Suite Briefing via Lexi AI Engine..."):
                 from generative.summarizer import summarize_text
                 st.session_state.summary_result = summarize_text(st.session_state.raw_text, style=style)
+                _audit("executive_briefing", style=style)
         
         if st.session_state.summary_result:
             st.markdown(st.session_state.summary_result)
@@ -347,6 +449,9 @@ elif selected_nav == "✅ Compliance Checker":
                 r = st.session_state.pipeline_result or {}
                 sents = r.get("sentences", st.session_state.raw_text.split("."))
                 st.session_state.compliance_result = evaluate_compliance(sents, custom_checklist=custom_rules)
+                _audit("compliance_check", custom_checklist=bool(custom_rules.strip()),
+                       results={s: sum(i["status"] == s for i in st.session_state.compliance_result)
+                                for s in ("PASS", "FAIL", "REVIEW")})
 
         if st.session_state.compliance_result:
             for item in st.session_state.compliance_result:
@@ -356,10 +461,10 @@ elif selected_nav == "✅ Compliance Checker":
                 st.markdown(
                     f'<div class="card" style="margin-bottom:10px;">'
                     f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-                    f'<div style="font-weight:700;font-size:1.0rem;">{item.get("requirement")}</div>{badge}</div>'
-                    f'<div style="color:#cbd5e1;font-size:0.88rem;margin-bottom:4px;"><b>Explanation:</b> {item.get("explanation")}</div>'
-                    f'<div style="color:#94a3b8;font-size:0.84rem;margin-bottom:4px;"><b>Recommendation:</b> {item.get("recommendation")}</div>'
-                    f'<div style="color:#64748b;font-size:0.78rem;">Evidence: “{html.escape(str(item.get("citation")))}” | Quote {"verified ✓" if item.get("quote_verified") else "not verified"}</div>'
+                    f'<div style="font-weight:700;font-size:1.0rem;">{_e(item.get("requirement"))}</div>{badge}</div>'
+                    f'<div style="color:#cbd5e1;font-size:0.88rem;margin-bottom:4px;"><b>Explanation:</b> {_e(item.get("explanation"))}</div>'
+                    f'<div style="color:#94a3b8;font-size:0.84rem;margin-bottom:4px;"><b>Recommendation:</b> {_e(item.get("recommendation"))}</div>'
+                    f'<div style="color:#64748b;font-size:0.78rem;">Evidence: “{_e(item.get("citation"))}” | Quote {"verified ✓" if item.get("quote_verified") else "not verified"}</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
@@ -378,6 +483,7 @@ elif selected_nav == "🏷️ Entity & Clause Extraction":
             with st.spinner("Extracting Entities & Contract Clauses..."):
                 from ner.ner_extractor import extract_entities
                 st.session_state.entities_result = extract_entities(st.session_state.raw_text)
+                _audit("entity_extraction")
 
         if st.session_state.entities_result:
             ent = st.session_state.entities_result
@@ -393,7 +499,7 @@ elif selected_nav == "🏷️ Entity & Clause Extraction":
                 ("⚠️ Risk Clauses", ent.get("PENALTY_RISKS", []), c2),
             ]
             for title, items, col in categories:
-                item_html = "".join([f"<div style='font-size:0.82rem;color:#cbd5e1;margin:3px 0;'>• {it}</div>" for it in items[:6]])
+                item_html = "".join([f"<div style='font-size:0.82rem;color:#cbd5e1;margin:3px 0;'>• {_e(it)}</div>" for it in items[:6]])
                 col.markdown(
                     f'<div class="card" style="margin-bottom:12px;">'
                     f'<div style="font-weight:700;font-size:0.92rem;color:#38bdf8;margin-bottom:8px;">{title} ({len(items)})</div>'
@@ -418,6 +524,13 @@ elif selected_nav == "💬 Document Q&A":
             with st.spinner("Searching Knowledge Base & Generating Answer..."):
                 from rag.agent import run_agent
                 res = run_agent(user_query, st.session_state.faiss_index, st.session_state.chunks)
+                if st.session_state.get("_last_audited_q") != user_query:   # Streamlit reruns must not duplicate entries
+                    st.session_state._last_audited_q = user_query
+                    from config import settings as _s
+                    _audit("question_asked", query=user_query if _s.audit_log_queries else audit.fingerprint(user_query),
+                           answerable=res["answerable"],
+                           sources=[{"doc": c["doc"], "location": c["location"], "cited": c.get("cited", False)}
+                                    for c in res.get("citations", [])])
                 st.markdown(res["answer"])
                 if res.get("citations"):
                     with st.expander(f"📎 Sources ({len(res['citations'])})", expanded=True):
@@ -440,6 +553,7 @@ elif selected_nav == "⚡ Action Item Extractor":
             with st.spinner("Extracting Operational Tasks..."):
                 from generative.action_item_extractor import extract_action_items
                 st.session_state.action_items_result = extract_action_items(st.session_state.raw_text)
+                _audit("action_items", count=len(st.session_state.action_items_result))
 
         if st.session_state.action_items_result:
             for item in st.session_state.action_items_result:
@@ -447,9 +561,9 @@ elif selected_nav == "⚡ Action Item Extractor":
                 p_color = "#f87171" if p == "High" else ("#fbbf24" if p == "Medium" else "#4ade80")
                 st.markdown(
                     f'<div class="card" style="margin-bottom:10px;border-left:4px solid {p_color};">'
-                    f'<div style="font-weight:700;font-size:0.95rem;">{item.get("task")}</div>'
+                    f'<div style="font-weight:700;font-size:0.95rem;">{_e(item.get("task"))}</div>'
                     f'<div style="font-size:0.82rem;color:#94a3b8;margin-top:4px;">'
-                    f'<b>Priority:</b> {p} | <b>Owner:</b> {item.get("owner")} | <b>Deadline:</b> {item.get("deadline")} | <b>Status:</b> {item.get("status")}'
+                    f'<b>Priority:</b> {p} | <b>Owner:</b> {_e(item.get("owner"))} | <b>Deadline:</b> {_e(item.get("deadline"))} | <b>Status:</b> {_e(item.get("status"))}'
                     f'</div></div>',
                     unsafe_allow_html=True
                 )
@@ -492,12 +606,29 @@ elif selected_nav == "🔎 Hybrid Search":
             for chunk, score, meta in results:
                 st.markdown(
                     f'<div class="card" style="margin-bottom:10px;">'
-                    f'<div style="font-weight:700;color:#38bdf8;">Hybrid Score: {score} | Doc: {meta["doc_name"]} | {meta["location"]}</div>'
-                    f'<div style="font-size:0.86rem;color:#cbd5e1;margin-top:4px;">{chunk}</div>'
-                    f'<div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Vector Score: {meta["vector_score"]} | BM25 Score: {meta["bm25_score"]} | Matched Keywords: {", ".join(meta["matched_keywords"])}</div>'
+                    f'<div style="font-weight:700;color:#38bdf8;">Hybrid Score: {score} | Doc: {_e(meta["doc_name"])} | {_e(meta["location"])}</div>'
+                    f'<div style="font-size:0.86rem;color:#cbd5e1;margin-top:4px;">{_e(chunk)}</div>'
+                    f'<div style="font-size:0.75rem;color:#64748b;margin-top:4px;">Vector Score: {meta["vector_score"]} | BM25 Score: {meta["bm25_score"]} | Matched Keywords: {_e(", ".join(meta["matched_keywords"]))}</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
+
+# ════════════════════════════════════════════════════════════════
+#  AUDIT LOG
+# ════════════════════════════════════════════════════════════════
+elif selected_nav == "🛡️ Audit Log":
+    st.markdown("## 🛡️ Audit Log")
+    st.caption("Tamper-evident record of who did what. Metadata only — document text is never stored.")
+    _ok, _msg = audit.verify()
+    (st.success if _ok else st.error)(_msg)
+    _entries = audit.read(limit=200)
+    if _entries:
+        st.dataframe([{"#": e["seq"], "Time (UTC)": e["ts"], "User": e["user"], "Action": e["action"],
+                       "Details": json.dumps(e["details"], ensure_ascii=False)} for e in reversed(_entries)],
+                     use_container_width=True, hide_index=True)
+        st.download_button("⬇️ Export CSV", audit.export_csv(), file_name="lexi_audit_log.csv", mime="text/csv")
+    else:
+        st.info("No audit events recorded yet.")
 
 # ════════════════════════════════════════════════════════════════
 #  PAGE 11: SETTINGS
@@ -508,6 +639,23 @@ elif selected_nav == "⚙️ Settings":
     st.text_input("Department / Unit", value=st.session_state.dept_name)
     st.selectbox("Default LLM Engine", ["LLaMA 3.2 3B (Local Ollama)", "Claude 3.5 Sonnet", "GPT-4o"])
     st.selectbox("Citation Style", ["Executive Inline Citations", "Legal Footnotes", "IEEE / Academic"])
+
+    if _cfg.auth_enabled and auth_roles.is_admin(_ROLE):
+        st.markdown("---")
+        st.markdown("### 👥 User Management")
+        st.dataframe(auth_users.list_users(), use_container_width=True, hide_index=True)
+        with st.form("add_user", clear_on_submit=True):
+            nu = st.text_input("New username")
+            nr = st.selectbox("Role", list(auth_users.ROLES), index=1,
+                              help="viewer: ask questions · analyst: upload and run analyses · admin: everything, incl. audit log")
+            npw = st.text_input("Temporary password (min 10 characters)", type="password")
+            if st.form_submit_button("Add user"):
+                try:
+                    auth_users.create_user(nu, npw, nr)
+                    _audit("user_created", target=nu.strip().lower(), role=nr)
+                    st.success(f"User {nu.strip().lower()} created.")
+                except ValueError as e:
+                    st.error(str(e))
 
 # ════════════════════════════════════════════════════════════════
 #  PAGE 12: BILLING & PRICING
