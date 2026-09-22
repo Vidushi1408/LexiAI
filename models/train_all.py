@@ -6,9 +6,9 @@ import os, sys, torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models.data_prep  import prepare_dataset
-from models.ann_model  import ANNClassifier, train_ann
-from models.cnn_model  import CNNClassifier, train_cnn
-from models.lstm_model import LSTMClassifier, train_lstm
+from models.ann_model  import train_ann
+from models.cnn_model  import train_cnn
+from models.lstm_model import train_lstm
 from models.evaluator  import evaluate_model, compare_models
 
 

@@ -15,6 +15,10 @@ _CHUNKS_FILE = os.path.join(_INDEX_DIR, "chunks.pkl")
 _HASH_FILE   = os.path.join(_INDEX_DIR, "text_hash.txt")
 
 
+import logging
+log = logging.getLogger("lexi.rag.indexer")
+
+
 class Chunk(str):
     """A text chunk that remembers where it came from (a plain str everywhere else)."""
     doc:   str        = "Primary Document"
@@ -93,18 +97,18 @@ def index_document(
             saved_hash = f.read().strip()
 
         if saved_hash == current_hash:
-            print("[INDEX] ✅ Cache hit — loading FAISS index from disk")
+            log.info("[INDEX] ✅ Cache hit — loading FAISS index from disk")
             index = faiss.read_index(_INDEX_FILE)
             with open(_CHUNKS_FILE, "rb") as f:
                 chunks = pickle.load(f)
-            print(f"[INDEX] Loaded {index.ntotal} vectors, {len(chunks)} chunks")
+            log.info(f"[INDEX] Loaded {index.ntotal} vectors, {len(chunks)} chunks")
             return index, chunks
 
     # ── Build fresh ────────────────────────────────────────────────────────────
-    print("[INDEX] Building FAISS index (document changed or first run)...")
+    log.info("[INDEX] Building FAISS index (document changed or first run)...")
     chunks = (_chunk_pages(pages, chunk_size, overlap) if pages
               else _chunk_text(text, chunk_size=chunk_size, overlap=overlap))
-    print(f"[INDEX] {len(chunks)} chunks created")
+    log.info(f"[INDEX] {len(chunks)} chunks created")
 
     vecs = embed_sentences(chunks, use_cache=persist)    # safe — cache key is hash of sentences
     vecs = vecs.astype(np.float32)
@@ -119,9 +123,9 @@ def index_document(
             pickle.dump(chunks, f)
         with open(_HASH_FILE, "w") as f:
             f.write(current_hash)
-        print(f"[INDEX] 💾 Saved to {_INDEX_DIR}")
+        log.info(f"[INDEX] 💾 Saved to {_INDEX_DIR}")
 
-    print(f"[INDEX] ✅ {index.ntotal} vectors indexed")
+    log.info(f"[INDEX] ✅ {index.ntotal} vectors indexed")
     return index, chunks
 
 
@@ -134,8 +138,8 @@ def load_index():
             index = faiss.read_index(_INDEX_FILE)
             with open(_CHUNKS_FILE, "rb") as f:
                 chunks = pickle.load(f)
-            print(f"[INDEX] Loaded saved index ({index.ntotal} vectors)")
+            log.info(f"[INDEX] Loaded saved index ({index.ntotal} vectors)")
             return index, chunks
         except Exception as e:
-            print(f"[INDEX] Failed to load index: {e}")
+            log.warning(f"[INDEX] Failed to load index: {e}")
     return None, []

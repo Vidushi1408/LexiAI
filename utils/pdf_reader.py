@@ -23,6 +23,10 @@ import email
 from email import policy
 
 
+import logging
+log = logging.getLogger("lexi.utils.pdf_reader")
+
+
 def _transcribe_audio(file_bytes: bytes, file_name: str) -> str:
     """
     Transcribes audio (MP3/WAV) using Whisper model if available.
@@ -36,12 +40,12 @@ def _transcribe_audio(file_bytes: bytes, file_name: str) -> str:
             tmp.write(file_bytes)
             tmp_path = tmp.name
 
-        print(f"[LEXI READ] Transcribing audio with Whisper: {file_name}")
+        log.info(f"[LEXI READ] Transcribing audio with Whisper: {file_name}")
         model = whisper.load_model("tiny")
         res = model.transcribe(tmp_path)
         return res.get("text", "").strip()
     except Exception as e:
-        print(f"[LEXI READ] Whisper audio transcription fallback: {e}")
+        log.warning(f"[LEXI READ] Whisper audio transcription fallback: {e}")
         return f"[Audio Transcript: {file_name}]\n(Audio transcription model initialization completed. File recorded for analysis.)"
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -90,7 +94,7 @@ def load_uploaded_file_pages(uploaded_file) -> list[dict]:
             for i, (sheet, df) in enumerate(sheets.items(), 1):
                 pages.append({"page": i, "label": f"Sheet: {sheet}", "text": df.to_string()})
     except Exception as e:
-        print(f"[LEXI READ] Page-level read failed for {uploaded_file.name}: {e}")
+        log.error(f"[LEXI READ] Page-level read failed for {uploaded_file.name}: {e}")
         pages = []
 
     if not pages:  # other formats, or page-level read failed
@@ -103,18 +107,18 @@ def load_uploaded_file_pages(uploaded_file) -> list[dict]:
 def extract_text_from_pdf(pdf_path: str) -> str:
     """Reads a PDF file and returns extracted text."""
     if not os.path.exists(pdf_path):
-        print(f"[ERROR] File not found: {pdf_path}")
+        log.error(f"[ERROR] File not found: {pdf_path}")
         return ""
 
     extracted_text = ""
     try:
         doc = fitz.open(pdf_path)
-        print(f"[INFO] PDF loaded: {pdf_path} | Pages: {len(doc)}")
+        log.info(f"[INFO] PDF loaded: {pdf_path} | Pages: {len(doc)}")
         for page in doc:
             extracted_text += page.get_text("text") + "\n"
         doc.close()
     except Exception as e:
-        print(f"[ERROR] Could not read PDF: {e}")
+        log.error(f"[ERROR] Could not read PDF: {e}")
         return ""
 
     return extracted_text.strip()
@@ -123,7 +127,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 def extract_text_from_txt(txt_path: str) -> str:
     """Reads a plain text file."""
     if not os.path.exists(txt_path):
-        print(f"[ERROR] File not found: {txt_path}")
+        log.error(f"[ERROR] File not found: {txt_path}")
         return ""
 
     try:
@@ -131,7 +135,7 @@ def extract_text_from_txt(txt_path: str) -> str:
             text = f.read()
         return text.strip()
     except Exception as e:
-        print(f"[ERROR] Could not read text file: {e}")
+        log.error(f"[ERROR] Could not read text file: {e}")
         return ""
 
 
@@ -156,7 +160,7 @@ def load_uploaded_file(uploaded_file) -> str:
             doc.close()
             return text.strip()
         except Exception as e:
-            print(f"[LEXI READ] PDF error: {e}")
+            log.warning(f"[LEXI READ] PDF error: {e}")
             return ""
 
     # 2. Plain Text & Markdown
@@ -164,7 +168,7 @@ def load_uploaded_file(uploaded_file) -> str:
         try:
             return file_bytes.decode("utf-8", errors="ignore").strip()
         except Exception as e:
-            print(f"[LEXI READ] Text error: {e}")
+            log.warning(f"[LEXI READ] Text error: {e}")
             return ""
 
     # 3. Word Document (.docx)
@@ -178,7 +182,7 @@ def load_uploaded_file(uploaded_file) -> str:
                     full_text.append(" | ".join([cell.text.strip() for cell in row.cells]))
             return "\n".join(full_text).strip()
         except Exception as e:
-            print(f"[LEXI READ] DOCX fallback/error: {e}")
+            log.warning(f"[LEXI READ] DOCX fallback/error: {e}")
             # Fallback plain text search
             return file_bytes.decode("utf-8", errors="ignore").strip()
 
@@ -196,7 +200,7 @@ def load_uploaded_file(uploaded_file) -> str:
                     sheet_texts.append(f"--- Sheet: {sheet_name} ---\n" + sheet_df.to_string())
                 return "\n\n".join(sheet_texts)
         except Exception as e:
-            print(f"[LEXI READ] Excel/CSV error: {e}")
+            log.warning(f"[LEXI READ] Excel/CSV error: {e}")
             return file_bytes.decode("utf-8", errors="ignore").strip()
 
     # 5. PowerPoint (.pptx)
@@ -214,7 +218,7 @@ def load_uploaded_file(uploaded_file) -> str:
                     slide_texts.append(f"--- Slide {idx+1} ---\n" + "\n".join(stext))
             return "\n\n".join(slide_texts).strip()
         except Exception as e:
-            print(f"[LEXI READ] PPTX error: {e}")
+            log.warning(f"[LEXI READ] PPTX error: {e}")
             return file_bytes.decode("utf-8", errors="ignore").strip()
 
     # 6. Email (.eml)
@@ -228,7 +232,7 @@ def load_uploaded_file(uploaded_file) -> str:
             body_text = body.get_content() if body else ""
             return f"Subject: {subject}\nFrom: {sender}\nDate: {date}\n\n{body_text}".strip()
         except Exception as e:
-            print(f"[LEXI READ] EML error: {e}")
+            log.warning(f"[LEXI READ] EML error: {e}")
             return file_bytes.decode("utf-8", errors="ignore").strip()
 
     # 7. Audio (.mp3, .wav)
@@ -236,7 +240,7 @@ def load_uploaded_file(uploaded_file) -> str:
         return _transcribe_audio(file_bytes, uploaded_file.name)
 
     else:
-        print(f"[WARNING] Unsupported file type: {uploaded_file.name}")
+        log.info(f"[WARNING] Unsupported file type: {uploaded_file.name}")
         try:
             return file_bytes.decode("utf-8", errors="ignore").strip()
         except Exception:

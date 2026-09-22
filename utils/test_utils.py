@@ -1,7 +1,7 @@
 # Run this from your project root: python utils/test_utils.py
 
 from utils.pdf_reader import extract_text_from_txt
-from utils.file_handler import save_raw_text, save_processed_data, load_processed_data
+from utils.file_handler import save_processed_data, load_processed_data
 
 # Test 1: Create a sample text file and read it
 sample_text = """

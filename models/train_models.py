@@ -18,7 +18,7 @@ Run this once to train all models and see the comparison table.
 """
 
 from models.data_prep  import prepare_dataset
-from models.ann_model  import train_ann,  save_model as save_ann
+from models.ann_model  import train_ann
 from models.cnn_model  import train_cnn
 from models.lstm_model import train_lstm
 from models.evaluator  import evaluate_model, compare_models

@@ -11,7 +11,8 @@ _CITE_RE = re.compile(r"\[(\d{1,2})\]")
 
 def number_sources(results: list, limit: int = 8) -> list[dict]:
     """De-duplicate hybrid_search results (by chunk_id) and number them from 1."""
-    seen, sources = set(), []
+    seen: set = set()
+    sources: list[dict] = []
     for chunk, score, meta in results:
         key = meta.get("chunk_id", str(chunk))
         if key in seen:
@@ -28,7 +29,9 @@ def number_sources(results: list, limit: int = 8) -> list[dict]:
 
 def build_context(sources: list[dict], max_chars: int = 3000) -> tuple[str, list[dict]]:
     """Render sources as '[n] doc — location' blocks. Returns (context, sources actually included)."""
-    parts, used, total = [], [], 0
+    parts: list[str] = []
+    used: list[dict] = []
+    total = 0
     for s in sources:
         block = f"[{s['n']}] {s['doc']} — {s['location']}\n{s['text']}"
         if total + len(block) > max_chars and used:

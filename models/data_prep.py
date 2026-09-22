@@ -4,7 +4,7 @@ import numpy as np, os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sklearn.model_selection import train_test_split
 from embeddings.sentence_embeddings import embed_sentences
-from models.training_data import TRAINING_DATA, LABEL_MAP, ID_TO_LABEL
+from models.training_data import TRAINING_DATA, LABEL_MAP
 
 
 def prepare_dataset() -> tuple:

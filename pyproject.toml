@@ -1,0 +1,24 @@
+[project]
+name = "lexi-ai"
+version = "0.1.0"
+description = "Enterprise document intelligence platform"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 140
+extend-exclude = ["venv", "data"]
+
+[tool.ruff.lint]
+# Correctness only (syntax errors, undefined names, unused imports/variables, redefinitions).
+# Formatting/style rules are deliberately not enforced yet.
+select = ["E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+files = ["llm", "audit", "auth", "config.py", "utils/upload_guard.py", "rag/citations.py", "rag/injection.py",
+         "generative/schemas.py", "generative/quote_check.py"]

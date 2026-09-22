@@ -33,7 +33,6 @@ I- prefix = Inside entity         ("I-PER" = continuation of person name)
 O  label  = Outside (not entity)
 """
 
-from transformers import pipeline
 import re
 
 
@@ -50,6 +49,45 @@ ENTITY_TYPE_MAP = {
     "PENALTY_RISKS"            : ("PENALTY & RISK CLAUSES",   "⚠️"),
     "MISCELLANEOUS"            : ("MISCELLANEOUS",            "🔖"),
 }
+
+
+# Global pipeline instance (load once, reuse)
+_ner_pipeline = None
+
+
+import logging
+log = logging.getLogger("lexi.ner.ner_extractor")
+
+
+def get_ner_pipeline():
+    """Loads the BERT NER pipeline once (lazy) and reuses it."""
+    global _ner_pipeline
+    if _ner_pipeline is None:
+        from transformers import pipeline   # lazy: heavy import, only needed for entity extraction
+        log.info("[NER] Loading BERT NER model (first time ~30 seconds)...")
+        _ner_pipeline = pipeline(
+            task="ner",
+            model="dbmdz/bert-large-cased-finetuned-conll03-english",
+            aggregation_strategy="simple",   # merge subword tokens back into whole words
+        )
+        log.info("[NER] BERT NER model loaded! ✅")
+    return _ner_pipeline
+
+
+def _split_into_chunks(text: str, max_chars: int = 400) -> list:
+    """Split text on sentence boundaries into chunks small enough for BERT's 512-token limit."""
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    chunks, current = [], ""
+    for sentence in sentences:
+        if len(current) + len(sentence) < max_chars:
+            current += " " + sentence
+        else:
+            if current.strip():
+                chunks.append(current.strip())
+            current = sentence
+    if current.strip():
+        chunks.append(current.strip())
+    return chunks
 
 
 def _organize_entities(raw_entities: list, text: str = "") -> dict:
@@ -145,7 +183,7 @@ def extract_entities(text: str) -> dict:
                 raw = ner(chunk)
                 all_raw_entities.extend(raw)
             except Exception as e:
-                print(f"[NER] Chunk error: {e}")
+                log.warning(f"[NER] Chunk error: {e}")
 
     organized = _organize_entities(all_raw_entities, text=text)
     return organized

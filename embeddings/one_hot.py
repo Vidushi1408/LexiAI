@@ -133,15 +133,3 @@ def demo_one_hot():
     bow = sentence_to_bow(sentences[0], vocab)
     print(f"\nBag-of-Words for {sentences[0]}:")
     print(bow)
-```
-
----
-
-## 📄 File 2: `embeddings/sentence_embeddings.py`
-
-### 💡 What are Sentence Transformers?
-A **pretrained deep learning model** that converts entire sentences into dense vectors of **384 or 768 numbers** — capturing actual semantic meaning.
-```
-"The cat sat on the mat"   → [0.23, -0.45, 0.78, ...]
-"A kitten rested on a rug" → [0.21, -0.43, 0.75, ...]  ← Very similar! ✅
-"Quantum physics is hard"  → [-0.91, 0.34, -0.12, ...] ← Very different ✅

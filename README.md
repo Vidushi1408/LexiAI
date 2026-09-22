@@ -110,3 +110,19 @@ streamlit run app.py
 ollama serve
 ollama pull llama3.2:3b
 ```
+
+---
+
+## 🧑‍💻 Development
+
+```bash
+make setup      # venv, dependencies, spaCy/NLTK data, pre-commit hooks
+make check      # lint + tests (what CI runs)
+make eval       # retrieval / refusal evaluation on the labelled dataset
+make run        # start the app
+make up         # app + local Ollama via Docker Compose
+```
+
+Configuration is via environment variables — see `.env.example`. Set `LEXI_LOG_FORMAT=json` for structured logs.
+CI (`.github/workflows/ci.yml`) runs lint, unit tests, a retrieval-quality gate, type checks, secret scanning (gitleaks),
+dependency auditing (pip-audit) and a Docker build on every push and pull request.

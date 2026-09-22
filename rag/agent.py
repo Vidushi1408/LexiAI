@@ -4,9 +4,9 @@ Multi-Tool Study Agent — Ollama (llama3.2:3b) powered
 Works synchronously — fully compatible with Streamlit.
 No API key needed. Runs locally via Ollama.
 """
-import os, sys, json, requests
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from rag.retriever import retrieve_relevant_chunks, build_context_string, is_query_answerable
+from rag.retriever import is_query_answerable
 from rag.indexer   import load_index
 from llm.client    import chat as _call_ollama
 from config        import settings
@@ -37,6 +37,10 @@ STRICT RULES:
 - Answer ONLY from the provided document context.
 - If the topic is not covered in the context, explicitly state: "**Not Found in Document Knowledge Base.** This topic is not covered in the uploaded enterprise documents."
 """
+
+
+import logging
+log = logging.getLogger("lexi.rag.agent")
 
 
 def _detect_format(question: str) -> str:
@@ -79,11 +83,11 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     if index is None:
         return _refusal("**No document loaded.**\n\nPlease upload and process enterprise documents in the Knowledge Base first.")
 
-    from rag.retriever import hybrid_search, is_query_answerable, answer_confidence
+    from rag.retriever import hybrid_search, answer_confidence
 
     # ── Step 1: retrieve, and refuse when nothing relevant enough was found ──
     tool_log = []
-    print(f"[AGENT] 🔍 hybrid_search: '{question[:60]}'")
+    log.info(f"[AGENT] 🔍 hybrid_search: '{question[:60]}'")
     results = hybrid_search(question, index, chunks, top_k=5)
     tool_log.append({"tool": "hybrid_search", "input": {"query": question}, "hits": len(results)})
 
@@ -98,7 +102,7 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     if any(w in q_lower for w in ["difference", "compare", "vs", "versus", "distinguish"]):
         words = [w for w in question.split() if len(w) > 4]
         second_query = " ".join(words[-3:]) if len(words) > 3 else question
-        print(f"[AGENT] 🔍 hybrid_search_secondary: '{second_query[:60]}'")
+        log.info(f"[AGENT] 🔍 hybrid_search_secondary: '{second_query[:60]}'")
         more = hybrid_search(second_query, index, chunks, top_k=4)
         tool_log.append({"tool": "hybrid_search_secondary", "input": {"query": second_query}, "hits": len(more)})
         results = results + more
@@ -106,7 +110,7 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     # ── Step 3: number sources, generate, verify ──
     sources = number_sources(results)
     context, sources = build_context(sources)
-    print(f"[AGENT] ✍️ Generating answer via Ollama ({settings.ollama_model}) from {len(sources)} sources...")
+    log.info(f"[AGENT] ✍️ Generating answer via Ollama ({settings.ollama_model}) from {len(sources)} sources...")
     answer = _generate_answer(question, context)
     tool_log.append({"tool": "ask_ollama", "input": {"question": question, "sources": len(sources)}})
 
@@ -125,7 +129,7 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     for s in sources:
         s["cited"] = s["n"] in check["cited"]
 
-    print(f"[AGENT] ✅ Done ({len(tool_log)} steps, cited={check['cited']}, invalid={check['invalid']})")
+    log.info(f"[AGENT] ✅ Done ({len(tool_log)} steps, cited={check['cited']}, invalid={check['invalid']})")
     return {
         "answer": answer, "tool_calls": tool_log, "answerable": True, "question": question,
         "citations": sources, "citation_check": check,

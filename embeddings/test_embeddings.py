@@ -10,7 +10,7 @@ Original file is located at
 # embeddings/test_embeddings.py
 # Run: python -m embeddings.test_embeddings
 
-from embeddings.one_hot import build_vocabulary, one_hot_encode, demo_one_hot
+from embeddings.one_hot import demo_one_hot
 from embeddings.sentence_embeddings import embed_sentences, find_most_similar
 
 print("=" * 50)

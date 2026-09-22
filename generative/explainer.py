@@ -3,7 +3,7 @@
 Ollama (Mistral) powered Concept Explainer
 Gives deep, structured concept explanations grounded in the student's notes.
 """
-import os, sys, requests
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 

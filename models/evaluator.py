@@ -89,7 +89,7 @@ def evaluate_model(model, X_test: np.ndarray,
 
     # Detailed per-class report
     label_names = [ID_TO_LABEL[i] for i in range(4)]
-    print(f"\nPer-class breakdown:\n")
+    print("\nPer-class breakdown:\n")
     print(classification_report(y_test, preds, target_names=label_names, zero_division=0))
 
     return {"accuracy": accuracy, "precision": precision,
