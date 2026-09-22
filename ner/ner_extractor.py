@@ -141,7 +141,11 @@ def _organize_entities(raw_entities: list, text: str = "") -> dict:
                 seen.add(d.lower())
 
         # Financial Values & Contract Values
-        fin = re.findall(r"(?:[\$€£₹]\s?\d+(?:,\d+)*(?:\.\d+)?|\b\d+\s?(?:USD|INR|EUR|GBP|million|billion|k)\b)", text, re.IGNORECASE)
+        fin = re.findall(
+            r"(?:[\$€£₹]\s?\d+(?:,\d+)*(?:\.\d+)?(?:\s?(?:million|billion|k))?"
+            r"|\b(?:USD|INR|EUR|GBP)\s?\d+(?:,\d+)*(?:\.\d+)?(?:\s?(?:million|billion|k))?"
+            r"|\b\d+(?:,\d+)*(?:\.\d+)?\s?(?:USD|INR|EUR|GBP|million|billion|k)\b)",
+            text, re.IGNORECASE)
         for f in fin:
             if f.lower() not in seen:
                 organized["FINANCIAL_VALUES"].append(f.strip())
