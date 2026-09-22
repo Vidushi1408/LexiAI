@@ -2,7 +2,7 @@
 """
 Ollama (llama3.2:3b) powered Summarizer — structured output
 """
-import os, sys, math, requests
+import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import nltk
@@ -20,7 +20,12 @@ from llm.client import chat as _call_ollama
 SYSTEM_PROMPT = (
     "You are an executive intelligence analyst at Lexi AI writing high-level business briefings. "
     "Use authoritative, executive business tone. Base your analysis strictly on the provided business documents. "
-    "Follow the requested markdown layout strictly."
+    "Follow the requested markdown layout strictly. "
+    "The documents are given to you as a list of numbered sources like [1], [2]. After every factual "
+    "statement, cite the supporting source number(s) in square brackets. Cite ONLY numbers that appear "
+    "in the context — never invent one. Do not write your own confidence score or source-grounding "
+    "section: leave that section out entirely, the platform appends real citation information after "
+    "your response."
 )
 
 STYLE_PROMPTS = {
@@ -49,11 +54,7 @@ Write 2-3 decisive sentences summarizing the key takeaway, core transaction, or 
 1. **Immediate Step**: Action item for leadership/management.
 2. **Follow-up**: Oversight or monitoring requirement.
 
-## 🛡️ Confidence Score & Source Grounding
-- **Confidence Score**: 95% (High Grounding)
-- **Source Material**: Grounded directly in uploaded Enterprise Documents.
-
-Documents to analyze:
+Numbered sources:
 """,
 
 "detailed": """Generate a DETAILED EXECUTIVE BRIEFING for the enterprise documents below.
@@ -80,10 +81,7 @@ List all major decisions, contract terms, policy mandates, or project milestones
 1. High-priority action item for execution.
 2. Compliance / audit verification task.
 
-## 🛡️ Confidence Score
-- **Confidence Score**: 92% (High Confidence - Verified Document Citations)
-
-Documents to analyze:
+Numbered sources:
 """,
 
 "bullets": """Generate a SCANNABLE EXECUTIVE BRIEFING for rapid C-Suite review.
@@ -111,10 +109,7 @@ Use this EXACT format:
 ### 📌 Immediate Action Items
 - Priority Action 1
 
----
-🛡️ **Confidence Score:** 94% (Verified against Enterprise Knowledge Base)
-
-Documents to analyze:
+Numbered sources:
 """,
 }
 
@@ -142,15 +137,59 @@ def _extractive_fallback(text: str, style: str) -> str:
         f"## 🎯 Bottom Line\n"
         f"Executive briefing generated from primary document sources.\n\n"
         f"## 📋 Key Findings & Extracted Provisions\n{bullets}\n\n"
-        f"## 🛡️ Confidence Score\n"
-        f"- **Confidence Score**: 88% (Extractive Fallback Mode)\n"
-        f"> 💡 **System Note:** Ollama local LLM engine offline. Enable `ollama serve` for full generative executive briefs."
+        f"> 💡 **System Note:** These are the highest-scoring sentences picked by a keyword heuristic, "
+        f"not an LLM summary — Ollama was offline. No claim here has been verified against a source; "
+        f"read them in context. Enable `ollama serve` for a full generative, cited executive brief."
     )
 
 
-def summarize_text(text: str, style: str = "concise") -> str:
+def _summarize_with_citations(style: str, chunks: list) -> str:
+    """
+    Cited, verified path: the document is given to the model as numbered sources (like Q&A's
+    agent), and the confidence/citation footer is computed afterwards from what was actually
+    cited — never asked of the model, which is what let it write a fabricated "95% Confidence".
+    """
+    from rag.citations import build_context, number_sources_from_chunks, strip_invalid, verify_citations
+
+    all_docs = sorted({getattr(c, "doc", "Primary Document") for c in chunks})
+    sources = number_sources_from_chunks(chunks)
+    context, sources = build_context(sources, max_chars=4000)
+
+    prompt = STYLE_PROMPTS.get(style, STYLE_PROMPTS["concise"])
+    result = _call_ollama(SYSTEM_PROMPT, f"{prompt}\n{context}", max_tokens=1500)
+    if not result:
+        return _extractive_fallback("\n".join(str(c) for c in chunks), style)
+
+    check = verify_citations(result, len(sources))
+    result = strip_invalid(result, check["invalid"])
+
+    covered_docs = sorted({s["doc"] for s in sources if s["n"] in check["cited"]})
+    footer = ["\n\n---\n### 🛡️ Citations & Coverage"]
+    if check["cited"]:
+        footer.append("- **Cited sources:** " + ", ".join(f"[{n}]" for n in check["cited"]))
+        footer.append(f"- **Documents referenced:** {len(covered_docs)} of {len(all_docs)} uploaded "
+                       f"({', '.join(covered_docs)})")
+        if len(covered_docs) < len(all_docs):
+            missed = [d for d in all_docs if d not in covered_docs]
+            footer.append(f"- ⚠️ Not covered in this briefing: {', '.join(missed)} — "
+                           f"ask Document Q&A about them directly, or generate a separate briefing per document.")
+    else:
+        footer.append("- ⚠️ **This briefing carries no source citations** — verify it against the uploaded "
+                       "documents before relying on it.")
+    return result + "\n".join(footer)
+
+
+def summarize_text(text: str, style: str = "concise", chunks: list | None = None) -> str:
+    """
+    `chunks` (from rag.indexer, carrying real doc/page provenance) is the preferred path: it
+    produces numbered, verified citations and a real coverage footer instead of a model-invented
+    confidence score. Without it, falls back to the older uncited raw-text summary, kept for
+    callers that only have plain text.
+    """
     if not text or len(text.strip()) < 50:
         return "Document content is insufficient for executive briefing."
+    if chunks:
+        return _summarize_with_citations(style, chunks)
     prompt   = STYLE_PROMPTS.get(style, STYLE_PROMPTS["concise"])
     user_msg = f"{prompt}\n{text[:4000]}"
     result   = _call_ollama(SYSTEM_PROMPT, user_msg, max_tokens=1500)

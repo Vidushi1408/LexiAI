@@ -27,6 +27,25 @@ def number_sources(results: list, limit: int = 8) -> list[dict]:
     return sources
 
 
+def number_sources_from_chunks(chunks: list, limit: int = 40) -> list[dict]:
+    """
+    Number indexed chunks (as produced by rag.indexer, carrying .doc/.page/.label) in document
+    order — for a whole-document task like a briefing, which has no query/retrieval score to
+    rank by, unlike number_sources() which numbers a hybrid_search result set.
+    """
+    sources: list[dict] = []
+    for chunk in chunks[:limit]:
+        page = getattr(chunk, "page", None)
+        sources.append({
+            "n": len(sources) + 1,
+            "doc": getattr(chunk, "doc", "Primary Document"),
+            "location": getattr(chunk, "label", "") or (f"Page {page}" if page else "location unknown"),
+            "score": 1.0,
+            "text": str(chunk),
+        })
+    return sources
+
+
 def build_context(sources: list[dict], max_chars: int = 3000) -> tuple[str, list[dict]]:
     """Render sources as '[n] doc — location' blocks. Returns (context, sources actually included)."""
     parts: list[str] = []

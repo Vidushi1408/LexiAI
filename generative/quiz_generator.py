@@ -7,7 +7,7 @@ verified to exist in the document — otherwise it is downgraded to REVIEW.
 Falls back to a rule-based keyword scan when Ollama is offline.
 (Filename kept for import compatibility; `generate_quiz` is a legacy alias.)
 """
-import os, sys, re
+import os, sys
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from llm.client import chat_json
@@ -50,18 +50,44 @@ def _finalize(finding: dict, doc_text: str) -> dict:
     }
 
 
+def _reconcile_with_policy(items: list[dict], policy: dict) -> list[dict]:
+    """
+    Guarantee one result per standard-policy requirement, in policy order — a small local model
+    sometimes returns fewer items than the checklist has, and silently showing a partial list
+    would look complete when it isn't. Any requirement the model never addressed becomes an
+    explicit REVIEW entry rather than disappearing.
+    """
+    by_name = {i["requirement"].strip().lower(): i for i in items}
+    reconciled = []
+    for req in policy["requirements"]:
+        match = by_name.get(req["name"].strip().lower()) or next(
+            (i for i in items if req["name"].lower() in i["requirement"].lower()
+             or i["requirement"].lower() in req["name"].lower()), None)
+        reconciled.append(match or {
+            "requirement": req["name"], "status": "REVIEW",
+            "explanation": "The AI model did not evaluate this requirement — retry the check or review it manually.",
+            "recommendation": f"Re-run the compliance check, or have legal confirm {req['name'].lower()}.",
+            "citation": "Section Not Found", "quote_verified": False,
+        })
+    return reconciled
+
+
 def evaluate_compliance(sentences: list, custom_checklist: str = None) -> list:
     """
     Evaluates document sentences against the standard policy (or a custom checklist).
     Returns a list of dicts: requirement, status, explanation, recommendation, citation, quote_verified.
+    For the standard policy, the result always has exactly one entry per checklist requirement —
+    see _reconcile_with_policy. A custom checklist has no fixed catalogue to reconcile against,
+    so it returns whatever the model addressed.
     """
     if not sentences:
         return []
 
     doc_text = " ".join(sentences[:80])[:4000]
     policy = load_policy()
+    using_custom = bool(custom_checklist and custom_checklist.strip())
 
-    if custom_checklist and custom_checklist.strip():
+    if using_custom:
         checklist = f"Checklist / Policy Rules to verify:\n{custom_checklist.strip()}"
     else:
         checklist = f"{policy['name']} (v{policy['version']}) — verify each item:\n" + "\n".join(
@@ -70,9 +96,17 @@ def evaluate_compliance(sentences: list, custom_checklist: str = None) -> list:
     user_msg = f"{checklist}\n\nDocument Content to Evaluate:\n{doc_text}"
     report = chat_json(COMPLIANCE_SYSTEM_PROMPT, user_msg, ComplianceReport, max_tokens=3000)
 
+    expected = None if using_custom else len(policy["requirements"])
+    if report is not None and expected is not None and len(report.items) < expected:
+        retry_msg = (f"{user_msg}\n\nYour previous reply covered only {len(report.items)} of {expected} "
+                     f"checklist items. Return all {expected} items this time, one per requirement, in order.")
+        report = chat_json(COMPLIANCE_SYSTEM_PROMPT, retry_msg, ComplianceReport, max_tokens=3000) or report
+
     if report is None or not report.items:
         return _rule_based_compliance_fallback(sentences, policy)
-    return [_finalize(f.model_dump(), doc_text) for f in report.items]
+
+    items = [_finalize(f.model_dump(), doc_text) for f in report.items]
+    return items if using_custom else _reconcile_with_policy(items, policy)
 
 
 def _rule_based_compliance_fallback(sentences: list, policy: dict | None = None) -> list:

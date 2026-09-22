@@ -76,9 +76,9 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     if index is None or chunks is None:
         index, chunks = load_index()
 
-    def _refusal(msg: str) -> dict:
+    def _refusal(msg: str, confidence: float = 0.0) -> dict:
         return {"answer": msg, "tool_calls": [], "answerable": False, "question": question,
-                "citations": [], "citation_check": {"cited": [], "invalid": []}}
+                "citations": [], "citation_check": {"cited": [], "invalid": []}, "confidence": confidence}
 
     if index is None:
         return _refusal("**No document loaded.**\n\nPlease upload and process enterprise documents in the Knowledge Base first.")
@@ -94,7 +94,8 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     if not is_query_answerable(results, threshold=settings.min_relevance):
         return _refusal(
             "**Not found in Enterprise Knowledge Base.**\n\n"
-            "This query does not match any information in the uploaded business documents."
+            "This query does not match any information in the uploaded business documents.",
+            confidence=answer_confidence(results),
         )
 
     # ── Step 2: second search for comparison questions ──
@@ -132,7 +133,7 @@ def run_agent(question: str, index=None, chunks: list = None) -> dict:
     log.info(f"[AGENT] ✅ Done ({len(tool_log)} steps, cited={check['cited']}, invalid={check['invalid']})")
     return {
         "answer": answer, "tool_calls": tool_log, "answerable": True, "question": question,
-        "citations": sources, "citation_check": check,
+        "citations": sources, "citation_check": check, "confidence": top,
     }
 
 
