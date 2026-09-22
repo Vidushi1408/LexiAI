@@ -1,0 +1,48 @@
+{
+  "documents": [
+    {
+      "name": "business_associate_agreement.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "This Business Associate Agreement is entered into between Riverside Health Network (the Covered Entity) and Claritas Health Analytics Inc. (the Business Associate) on 10 February 2025, to permit the Business Associate to process protected health information (PHI) on behalf of the Covered Entity for population health analytics services."},
+        {"page": 2, "label": "Page 2", "text": "The Business Associate shall use and disclose PHI only as permitted by this Agreement and the HIPAA Privacy Rule, and shall implement appropriate administrative, physical and technical safeguards to prevent unauthorized use or disclosure. The Business Associate shall encrypt PHI at rest and in transit using industry-standard encryption."},
+        {"page": 3, "label": "Page 3", "text": "The Business Associate shall report any breach of unsecured PHI to the Covered Entity within seventy-two hours of discovery. The Business Associate shall maintain a log of all disclosures of PHI and provide it to the Covered Entity upon request within ten business days."},
+        {"page": 4, "label": "Page 4", "text": "Upon termination of this Agreement for any reason, the Business Associate shall return or destroy all PHI within thirty days, unless return or destruction is infeasible, in which case the protections of this Agreement continue to apply. Either party may terminate this Agreement for a material breach not cured within thirty days of written notice."},
+        {"page": 5, "label": "Page 5", "text": "The Business Associate's liability for a breach of PHI caused by its negligence is capped at USD 1,000,000 per incident. This Agreement is governed by the laws of the State of California, and the parties submit to the exclusive jurisdiction of the courts of San Francisco County."}
+      ]
+    },
+    {
+      "name": "clinical_trial_summary.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "Phase II Clinical Trial Summary: NX-204 for moderate-to-severe plaque psoriasis. The trial enrolled 240 patients across 18 sites and compared NX-204 to placebo over a sixteen-week treatment period. The primary endpoint was a 75 percent reduction in Psoriasis Area and Severity Index (PASI 75) at week 16."},
+        {"page": 2, "label": "Page 2", "text": "64 percent of patients receiving NX-204 achieved PASI 75 at week 16, compared to 11 percent in the placebo group, a statistically significant difference (p less than 0.001). The most common adverse events were mild injection-site reactions, reported in 12 percent of the treatment group, and upper respiratory infection, reported in 8 percent."},
+        {"page": 3, "label": "Page 3", "text": "Two serious adverse events were reported in the treatment arm, neither judged related to the study drug by the independent safety monitoring board. Based on these results, the sponsor plans to advance NX-204 into a Phase III trial enrolling approximately 900 patients, with topline results expected in eighteen months."}
+      ]
+    },
+    {
+      "name": "patient_intake_notes.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "Patient intake note, Riverside Family Clinic, 8 March 2025. Patient: 54-year-old presenting with intermittent chest tightness on exertion over the past three weeks, resolving with rest. No prior cardiac history. Blood pressure 148/92, heart rate 78. Attending physician Dr. Amara Odhiambo ordered an ECG and referred the patient to cardiology for a stress test within two weeks. Patient advised to avoid strenuous exercise until cleared and to return immediately if chest pain occurs at rest."}
+      ]
+    }
+  ],
+  "questions": [
+    {"q": "Who are the parties to the Business Associate Agreement?", "doc": "business_associate_agreement.pdf", "page": 1, "must_contain": "Riverside Health Network", "answerable": true},
+    {"q": "How must the business associate protect PHI in transit and at rest?", "doc": "business_associate_agreement.pdf", "page": 2, "must_contain": "encrypt", "answerable": true},
+    {"q": "How quickly must a PHI breach be reported to the covered entity?", "doc": "business_associate_agreement.pdf", "page": 3, "must_contain": "seventy-two hours", "answerable": true},
+    {"q": "What must happen to PHI when the agreement terminates?", "doc": "business_associate_agreement.pdf", "page": 4, "must_contain": "return or destroy all PHI within thirty days", "answerable": true},
+    {"q": "What is the cap on the business associate's liability for a PHI breach?", "doc": "business_associate_agreement.pdf", "page": 5, "must_contain": "1,000,000", "answerable": true},
+    {"q": "How many patients were enrolled in the NX-204 Phase II trial?", "doc": "clinical_trial_summary.pdf", "page": 1, "must_contain": "240 patients", "answerable": true},
+    {"q": "What percentage of NX-204 patients achieved PASI 75 at week 16?", "doc": "clinical_trial_summary.pdf", "page": 2, "must_contain": "64 percent", "answerable": true},
+    {"q": "What are the most common adverse events reported for NX-204?", "doc": "clinical_trial_summary.pdf", "page": 2, "must_contain": "injection-site reactions", "answerable": true},
+    {"q": "What is the sponsor's plan after the Phase II results?", "doc": "clinical_trial_summary.pdf", "page": 3, "must_contain": "Phase III trial", "answerable": true},
+    {"q": "What symptoms did the patient present with at intake?", "doc": "patient_intake_notes.txt", "page": 1, "must_contain": "chest tightness on exertion", "answerable": true},
+    {"q": "What follow-up did the physician order for the patient?", "doc": "patient_intake_notes.txt", "page": 1, "must_contain": "stress test", "answerable": true},
+    {"q": "What is the hospital's policy on visiting hours?", "answerable": false},
+    {"q": "What vaccines are required for international travel?", "answerable": false},
+    {"q": "What is the recommended daily dosage of ibuprofen for adults?", "answerable": false},
+    {"q": "Which insurance plans does the clinic accept?", "answerable": false}
+  ],
+  "compliance": [
+    {"doc": "business_associate_agreement.pdf", "expect": {"Termination & Notice Period": "PASS", "Data Protection & Confidentiality": "PASS", "Limitation of Liability & Indemnity": "PASS", "Payment Terms & Penalties": "REVIEW", "SLA & Performance Commitments": "REVIEW", "Governing Law & Dispute Resolution": "PASS"}}
+  ]
+}

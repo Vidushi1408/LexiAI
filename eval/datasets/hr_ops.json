@@ -1,0 +1,46 @@
+{
+  "documents": [
+    {
+      "name": "employee_handbook_excerpt.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "Orbital Systems Inc. Employee Handbook, Section 4: Leave and Time Off, effective 1 January 2025. Full-time employees accrue fifteen days of paid vacation per year during their first three years of employment, increasing to twenty days after three years of continuous service. Vacation requests must be submitted at least ten business days in advance."},
+        {"page": 2, "label": "Page 2", "text": "Employees are eligible for twelve weeks of paid parental leave following the birth, adoption or foster placement of a child, provided they have completed six months of continuous employment. Parental leave must be taken within twelve months of the qualifying event and may be split into two blocks with manager approval."},
+        {"page": 3, "label": "Page 3", "text": "All employees must complete annual data privacy and information security training within thirty days of their hire date and annually thereafter. Employee personal data collected by the company is processed in accordance with the company's Privacy Policy and applicable data protection law, and is not shared with third parties except as required for payroll, benefits administration or legal compliance."},
+        {"page": 4, "label": "Page 4", "text": "Employment with Orbital Systems Inc. is at-will and may be terminated by either the employee or the company at any time, with or without cause, subject to two weeks written notice as a courtesy except in cases of gross misconduct, which may result in immediate termination. Final paychecks are issued within the timeframe required by applicable state law."},
+        {"page": 5, "label": "Page 5", "text": "Disputes arising from employment are subject to the company's internal grievance procedure in the first instance, followed by binding arbitration under the rules of the American Arbitration Association. This handbook is governed by the laws of the State of Texas."}
+      ]
+    },
+    {
+      "name": "onboarding_checklist.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "New Hire Onboarding Checklist, Orbital Systems Inc. Week 1: IT provisions laptop and accounts by day 1; HR completes I-9 verification within three business days; new hire completes benefits enrollment within thirty days of start date. Week 2: manager assigns onboarding buddy and schedules 30-60-90 day check-ins; new hire completes mandatory compliance training modules on data privacy, workplace safety and anti-harassment. Owner for the checklist is the HR Business Partner assigned to the hiring manager's department."}
+      ]
+    },
+    {
+      "name": "all_hands_meeting_notes.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "All-hands meeting notes, Orbital Systems Inc., 20 March 2025. CEO Elena Marsh announced the company grew headcount by 18 percent in Q1 and opened a new office in Austin. VP of People Daniel Okafor announced a revised hybrid work policy requiring three in-office days per week starting 1 May 2025, and asked all managers to communicate the change to their teams by 28 March. Daniel will publish the updated remote work policy document by 4 April. An employee engagement survey will be sent to all staff next Monday, with results reviewed at the April all-hands."}
+      ]
+    }
+  ],
+  "questions": [
+    {"q": "How many vacation days do employees accrue in their first three years?", "doc": "employee_handbook_excerpt.pdf", "page": 1, "must_contain": "fifteen days", "answerable": true},
+    {"q": "How much paid parental leave are eligible employees entitled to?", "doc": "employee_handbook_excerpt.pdf", "page": 2, "must_contain": "twelve weeks", "answerable": true},
+    {"q": "How often must employees complete data privacy training?", "doc": "employee_handbook_excerpt.pdf", "page": 3, "must_contain": "annually", "answerable": true},
+    {"q": "What notice period applies to termination of at-will employment?", "doc": "employee_handbook_excerpt.pdf", "page": 4, "must_contain": "two weeks written notice", "answerable": true},
+    {"q": "How are employment disputes resolved under the handbook?", "doc": "employee_handbook_excerpt.pdf", "page": 5, "must_contain": "binding arbitration", "answerable": true},
+    {"q": "When must a new hire complete I-9 verification?", "doc": "onboarding_checklist.txt", "page": 1, "must_contain": "three business days", "answerable": true},
+    {"q": "Who owns the onboarding checklist?", "doc": "onboarding_checklist.txt", "page": 1, "must_contain": "HR Business Partner", "answerable": true},
+    {"q": "How much did headcount grow in Q1?", "doc": "all_hands_meeting_notes.txt", "page": 1, "must_contain": "18 percent", "answerable": true},
+    {"q": "What is the new hybrid work policy requirement?", "doc": "all_hands_meeting_notes.txt", "page": 1, "must_contain": "three in-office days", "answerable": true},
+    {"q": "What did Daniel Okafor commit to publish and by when?", "doc": "all_hands_meeting_notes.txt", "page": 1, "must_contain": "remote work policy document by 4 April", "answerable": true},
+    {"q": "What is the company's 401k employer matching percentage?", "answerable": false},
+    {"q": "Who is the head of the sales department?", "answerable": false},
+    {"q": "What is the office dress code on Fridays?", "answerable": false},
+    {"q": "What was discussed at last year's holiday party?", "answerable": false},
+    {"q": "How many parking spots does the Austin office have?", "answerable": false}
+  ],
+  "compliance": [
+    {"doc": "employee_handbook_excerpt.pdf", "expect": {"Termination & Notice Period": "PASS", "Data Protection & Confidentiality": "PASS", "Limitation of Liability & Indemnity": "REVIEW", "Payment Terms & Penalties": "REVIEW", "SLA & Performance Commitments": "REVIEW", "Governing Law & Dispute Resolution": "PASS"}}
+  ]
+}

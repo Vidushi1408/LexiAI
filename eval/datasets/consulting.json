@@ -1,0 +1,48 @@
+{
+  "documents": [
+    {
+      "name": "statement_of_work.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "Statement of Work No. SOW-114, entered into between Beacon Strategy Group LLP (the Consultant) and Farrow & Kline Retail Corp. (the Client) on 15 January 2025, for a supply chain optimization engagement. The engagement will run for twelve weeks starting 3 February 2025, with a team of four consultants."},
+        {"page": 2, "label": "Page 2", "text": "Deliverables include a current-state supply chain assessment by week 4, a redesigned distribution network model by week 8, and a final implementation roadmap with cost-benefit analysis by week 12. The Client will provide access to relevant data, systems and subject matter experts within five business days of request."},
+        {"page": 3, "label": "Page 3", "text": "Total fees for the engagement are USD 480,000, billed in three equal instalments of USD 160,000 at project kickoff, the week 6 milestone, and final delivery. Payment is due within thirty days of invoice. Reasonable travel expenses are billed separately at cost, capped at USD 20,000 for the engagement."},
+        {"page": 4, "label": "Page 4", "text": "Either party may terminate this Statement of Work for convenience with fourteen days written notice, in which case the Client shall pay for all work performed and non-cancellable expenses incurred up to the termination date. The Consultant shall keep all Client data and business information confidential during and after the engagement."},
+        {"page": 5, "label": "Page 5", "text": "The Consultant's total liability under this engagement is limited to the fees paid under this Statement of Work. This Statement of Work is governed by the laws of England and Wales, with disputes subject to the exclusive jurisdiction of the courts of London."}
+      ]
+    },
+    {
+      "name": "client_workshop_transcript.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "Workshop transcript, Farrow & Kline supply chain kickoff, 4 February 2025. Attendees: James Farrow (COO), Priya Nair (Head of Logistics), Tom Reyes (Beacon Strategy Group lead consultant). Tom presented the engagement timeline and confirmed the week 4 assessment deadline. James raised a concern about warehouse capacity in the northeast region and asked Priya to share the last twelve months of throughput data by Friday. Priya agreed to send the data and to schedule site visits to the two largest distribution centers within two weeks. The group agreed the next checkpoint call will be held every Tuesday at 10am."}
+      ]
+    },
+    {
+      "name": "market_research_brief.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "Market Research Brief: Southeast Asia Grocery Delivery Sector, prepared for Farrow & Kline Retail Corp. The addressable market for online grocery delivery in Southeast Asia is estimated at USD 9.4 billion in 2025, growing at a compound annual rate of 18 percent through 2029."},
+        {"page": 2, "label": "Page 2", "text": "The three largest players by market share are RedCart (27 percent), GrabMart (22 percent) and HappyFresh (14 percent). Consumer surveys indicate delivery speed and out-of-stock rates are the top two drivers of customer churn, cited by 61 percent and 48 percent of respondents respectively. Average order value across the sector is USD 24."}
+      ]
+    }
+  ],
+  "questions": [
+    {"q": "Who are the parties to the statement of work?", "doc": "statement_of_work.pdf", "page": 1, "must_contain": "Beacon Strategy Group", "answerable": true},
+    {"q": "How long does the supply chain engagement run?", "doc": "statement_of_work.pdf", "page": 1, "must_contain": "twelve weeks", "answerable": true},
+    {"q": "What is the final deliverable of the engagement?", "doc": "statement_of_work.pdf", "page": 2, "must_contain": "implementation roadmap", "answerable": true},
+    {"q": "What are the total fees for the engagement?", "doc": "statement_of_work.pdf", "page": 3, "must_contain": "480,000", "answerable": true},
+    {"q": "What is the cap on travel expenses for the engagement?", "doc": "statement_of_work.pdf", "page": 3, "must_contain": "20,000", "answerable": true},
+    {"q": "What notice is required to terminate the statement of work for convenience?", "doc": "statement_of_work.pdf", "page": 4, "must_contain": "fourteen days", "answerable": true},
+    {"q": "What is the cap on the consultant's liability?", "doc": "statement_of_work.pdf", "page": 5, "must_contain": "fees paid under this Statement of Work", "answerable": true},
+    {"q": "What concern did the client raise in the kickoff workshop?", "doc": "client_workshop_transcript.txt", "page": 1, "must_contain": "warehouse capacity", "answerable": true},
+    {"q": "What did Priya agree to do after the kickoff workshop?", "doc": "client_workshop_transcript.txt", "page": 1, "must_contain": "send the data", "answerable": true},
+    {"q": "How large is the Southeast Asia online grocery delivery market in 2025?", "doc": "market_research_brief.pdf", "page": 1, "must_contain": "9.4 billion", "answerable": true},
+    {"q": "What are the top two drivers of customer churn in the sector?", "doc": "market_research_brief.pdf", "page": 2, "must_contain": "delivery speed", "answerable": true},
+    {"q": "Which competitor has the largest market share?", "doc": "market_research_brief.pdf", "page": 2, "must_contain": "RedCart", "answerable": true},
+    {"q": "What is the firm's policy on employee equity grants?", "answerable": false},
+    {"q": "Who is the client's chief marketing officer?", "answerable": false},
+    {"q": "What was the outcome of the 2023 annual partner retreat?", "answerable": false},
+    {"q": "What programming languages does the firm's data team use?", "answerable": false}
+  ],
+  "compliance": [
+    {"doc": "statement_of_work.pdf", "expect": {"Termination & Notice Period": "PASS", "Data Protection & Confidentiality": "PASS", "Limitation of Liability & Indemnity": "PASS", "Payment Terms & Penalties": "PASS", "SLA & Performance Commitments": "REVIEW", "Governing Law & Dispute Resolution": "PASS"}}
+  ]
+}

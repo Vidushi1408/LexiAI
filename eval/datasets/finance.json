@@ -1,0 +1,50 @@
+{
+  "documents": [
+    {
+      "name": "vendor_loan_agreement.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "This Loan and Vendor Financing Agreement is entered into between Meridian Capital Partners LLC (the Lender) and Solace Manufacturing Inc. (the Borrower) on 4 January 2025. The Lender agrees to provide a term loan facility of USD 2,500,000 to finance the purchase of production equipment. The loan has a term of five years from the drawdown date."},
+        {"page": 2, "label": "Page 2", "text": "The Borrower shall repay the loan in sixty equal monthly instalments at a fixed interest rate of 7.25 percent per annum. Payments are due on the fifth day of each month. A late payment fee of 2 percent of the overdue amount applies after a five-day grace period. Two consecutive missed payments constitute an event of default."},
+        {"page": 3, "label": "Page 3", "text": "The Borrower must maintain a debt service coverage ratio of at least 1.25 and provide quarterly management accounts to the Lender within twenty business days of quarter end. The Borrower shall keep all financial records confidential and shall not disclose the terms of this Agreement to third parties without the Lender's consent."},
+        {"page": 4, "label": "Page 4", "text": "The Lender may accelerate the loan and demand immediate repayment in full if an event of default occurs and is not cured within fifteen days of written notice. The Borrower may prepay the loan at any time with thirty days written notice, subject to a 1 percent prepayment fee in the first two years."},
+        {"page": 5, "label": "Page 5", "text": "The Lender's aggregate liability under this Agreement is limited to the outstanding principal balance at the time of the claim. This Agreement is governed by the laws of the State of New York and any dispute shall be resolved exclusively in the courts of New York County."}
+      ]
+    },
+    {
+      "name": "q3_financial_report.pdf",
+      "pages": [
+        {"page": 1, "label": "Page 1", "text": "Solace Manufacturing Inc. Q3 FY25 Financial Summary. Revenue for the quarter was USD 14.8 million, up 9 percent year over year. Gross margin improved to 38 percent from 34 percent in the prior year quarter, driven by lower input costs. Operating expenses were USD 3.2 million."},
+        {"page": 2, "label": "Page 2", "text": "Net income for the quarter was USD 1.9 million compared to USD 1.1 million in Q3 FY24. Cash and cash equivalents at quarter end were USD 6.4 million. The company drew down an additional USD 800,000 under its term loan facility with Meridian Capital Partners to fund equipment purchases."},
+        {"page": 3, "label": "Page 3", "text": "Accounts receivable increased to USD 3.1 million, reflecting extended payment terms offered to two large retail customers. Management flagged customer concentration as a risk: the top two customers accounted for 46 percent of quarterly revenue. The board approved a share buyback program of up to USD 500,000 for the next twelve months."},
+        {"page": 4, "label": "Page 4", "text": "The audit committee reviewed internal controls and identified a control gap in the accounts payable approval workflow, which allowed a single approver to authorize payments above the delegated threshold. Management committed to implementing dual approval for payments over USD 50,000 by the end of Q4."}
+      ]
+    },
+    {
+      "name": "expense_policy_memo.txt",
+      "pages": [
+        {"page": 1, "label": "Full document", "text": "Finance Policy Memo: Employee Travel and Expense Reimbursement, effective 1 April 2025. Employees must submit expense reports within fourteen days of travel completion, with original receipts for any expense over USD 25. Airfare must be booked in economy class for flights under six hours; business class requires VP approval. The daily meal per diem is USD 60 domestically and USD 90 internationally. Expenses submitted more than sixty days after the trip will not be reimbursed except with CFO approval. All reimbursement requests are subject to random audit by the finance team."}
+      ]
+    }
+  ],
+  "questions": [
+    {"q": "Who are the parties to the loan agreement?", "doc": "vendor_loan_agreement.pdf", "page": 1, "must_contain": "Meridian Capital Partners", "answerable": true},
+    {"q": "What is the size of the term loan facility?", "doc": "vendor_loan_agreement.pdf", "page": 1, "must_contain": "2,500,000", "answerable": true},
+    {"q": "What interest rate applies to the loan?", "doc": "vendor_loan_agreement.pdf", "page": 2, "must_contain": "7.25 percent", "answerable": true},
+    {"q": "What debt service coverage ratio must the borrower maintain?", "doc": "vendor_loan_agreement.pdf", "page": 3, "must_contain": "1.25", "answerable": true},
+    {"q": "What prepayment fee applies in the first two years?", "doc": "vendor_loan_agreement.pdf", "page": 4, "must_contain": "1 percent prepayment fee", "answerable": true},
+    {"q": "What is the cap on the lender's liability?", "doc": "vendor_loan_agreement.pdf", "page": 5, "must_contain": "outstanding principal balance", "answerable": true},
+    {"q": "What was Q3 revenue and how did it compare to last year?", "doc": "q3_financial_report.pdf", "page": 1, "must_contain": "14.8 million", "answerable": true},
+    {"q": "What was net income in Q3 FY25?", "doc": "q3_financial_report.pdf", "page": 2, "must_contain": "1.9 million", "answerable": true},
+    {"q": "What customer concentration risk did management flag?", "doc": "q3_financial_report.pdf", "page": 3, "must_contain": "46 percent", "answerable": true},
+    {"q": "What internal control gap did the audit committee identify?", "doc": "q3_financial_report.pdf", "page": 4, "must_contain": "single approver", "answerable": true},
+    {"q": "How many days do employees have to submit an expense report?", "doc": "expense_policy_memo.txt", "page": 1, "must_contain": "fourteen days", "answerable": true},
+    {"q": "What is the domestic daily meal per diem?", "doc": "expense_policy_memo.txt", "page": 1, "must_contain": "USD 60", "answerable": true},
+    {"q": "What is the company's dividend policy for common shareholders?", "answerable": false},
+    {"q": "What is the CEO's total compensation package?", "answerable": false},
+    {"q": "Which stock exchange is the company listed on?", "answerable": false},
+    {"q": "What is the current interest rate set by the central bank?", "answerable": false}
+  ],
+  "compliance": [
+    {"doc": "vendor_loan_agreement.pdf", "expect": {"Termination & Notice Period": "PASS", "Data Protection & Confidentiality": "PASS", "Limitation of Liability & Indemnity": "PASS", "Payment Terms & Penalties": "PASS", "SLA & Performance Commitments": "REVIEW", "Governing Law & Dispute Resolution": "PASS"}}
+  ]
+}
