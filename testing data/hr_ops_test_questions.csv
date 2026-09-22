@@ -1,0 +1,16 @@
+question,answerable,expected_document,expected_page,expected_answer_contains
+How many vacation days do employees accrue in their first three years?,True,employee_handbook_excerpt.pdf,1,fifteen days
+How much paid parental leave are eligible employees entitled to?,True,employee_handbook_excerpt.pdf,2,twelve weeks
+How often must employees complete data privacy training?,True,employee_handbook_excerpt.pdf,3,annually
+What notice period applies to termination of at-will employment?,True,employee_handbook_excerpt.pdf,4,two weeks written notice
+How are employment disputes resolved under the handbook?,True,employee_handbook_excerpt.pdf,5,binding arbitration
+When must a new hire complete I-9 verification?,True,onboarding_checklist.txt,1,three business days
+Who owns the onboarding checklist?,True,onboarding_checklist.txt,1,HR Business Partner
+How much did headcount grow in Q1?,True,all_hands_meeting_notes.txt,1,18 percent
+What is the new hybrid work policy requirement?,True,all_hands_meeting_notes.txt,1,three in-office days
+What did Daniel Okafor commit to publish and by when?,True,all_hands_meeting_notes.txt,1,remote work policy document by 4 April
+What is the company's 401k employer matching percentage?,False,,,
+Who is the head of the sales department?,False,,,
+What is the office dress code on Fridays?,False,,,
+What was discussed at last year's holiday party?,False,,,
+How many parking spots does the Austin office have?,False,,,

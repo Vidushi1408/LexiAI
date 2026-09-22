@@ -1,0 +1,16 @@
+question,answerable,expected_document,expected_page,expected_answer_contains
+Who are the parties to the Business Associate Agreement?,True,business_associate_agreement.pdf,1,Riverside Health Network
+How must the business associate protect PHI in transit and at rest?,True,business_associate_agreement.pdf,2,encrypt
+How quickly must a PHI breach be reported to the covered entity?,True,business_associate_agreement.pdf,3,seventy-two hours
+What must happen to PHI when the agreement terminates?,True,business_associate_agreement.pdf,4,return or destroy all PHI within thirty days
+What is the cap on the business associate's liability for a PHI breach?,True,business_associate_agreement.pdf,5,"1,000,000"
+How many patients were enrolled in the NX-204 Phase II trial?,True,clinical_trial_summary.pdf,1,240 patients
+What percentage of NX-204 patients achieved PASI 75 at week 16?,True,clinical_trial_summary.pdf,2,64 percent
+What are the most common adverse events reported for NX-204?,True,clinical_trial_summary.pdf,2,injection-site reactions
+What is the sponsor's plan after the Phase II results?,True,clinical_trial_summary.pdf,3,Phase III trial
+What symptoms did the patient present with at intake?,True,patient_intake_notes.txt,1,chest tightness on exertion
+What follow-up did the physician order for the patient?,True,patient_intake_notes.txt,1,stress test
+What is the hospital's policy on visiting hours?,False,,,
+What vaccines are required for international travel?,False,,,
+What is the recommended daily dosage of ibuprofen for adults?,False,,,
+Which insurance plans does the clinic accept?,False,,,

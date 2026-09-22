@@ -1,0 +1,17 @@
+question,answerable,expected_document,expected_page,expected_answer_contains
+Who are the parties to the loan agreement?,True,vendor_loan_agreement.pdf,1,Meridian Capital Partners
+What is the size of the term loan facility?,True,vendor_loan_agreement.pdf,1,"2,500,000"
+What interest rate applies to the loan?,True,vendor_loan_agreement.pdf,2,7.25 percent
+What debt service coverage ratio must the borrower maintain?,True,vendor_loan_agreement.pdf,3,1.25
+What prepayment fee applies in the first two years?,True,vendor_loan_agreement.pdf,4,1 percent prepayment fee
+What is the cap on the lender's liability?,True,vendor_loan_agreement.pdf,5,outstanding principal balance
+What was Q3 revenue and how did it compare to last year?,True,q3_financial_report.pdf,1,14.8 million
+What was net income in Q3 FY25?,True,q3_financial_report.pdf,2,1.9 million
+What customer concentration risk did management flag?,True,q3_financial_report.pdf,3,46 percent
+What internal control gap did the audit committee identify?,True,q3_financial_report.pdf,4,single approver
+How many days do employees have to submit an expense report?,True,expense_policy_memo.txt,1,fourteen days
+What is the domestic daily meal per diem?,True,expense_policy_memo.txt,1,USD 60
+What is the company's dividend policy for common shareholders?,False,,,
+What is the CEO's total compensation package?,False,,,
+Which stock exchange is the company listed on?,False,,,
+What is the current interest rate set by the central bank?,False,,,

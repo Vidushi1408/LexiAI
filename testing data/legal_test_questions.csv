@@ -1,0 +1,24 @@
+question,answerable,expected_document,expected_page,expected_answer_contains
+Who are the parties to the Master Services Agreement?,True,service_agreement.pdf,1,Northwind Analytics
+How long is the initial term of the service agreement?,True,service_agreement.pdf,1,thirty-six months
+What is the monthly subscription fee?,True,service_agreement.pdf,2,"18,500"
+What interest applies to late payments?,True,service_agreement.pdf,2,1.5 percent
+What uptime does the provider guarantee?,True,service_agreement.pdf,3,99.9 percent
+What service credit is given if availability drops?,True,service_agreement.pdf,3,service credit
+What is the notice period to terminate for convenience?,True,service_agreement.pdf,4,ninety days
+How quickly must client data be deleted after termination?,True,service_agreement.pdf,4,fourteen days
+What is the cap on the provider's liability?,True,service_agreement.pdf,5,twelve months preceding
+Which law governs the service agreement and which courts have jurisdiction?,True,service_agreement.pdf,5,England and Wales
+What is the purpose of the NDA between Acme and Globex?,True,nda_acme_globex.pdf,1,potential acquisition
+How must the receiving party protect confidential information?,True,nda_acme_globex.pdf,2,same degree of care
+Which data protection regulation applies to personal data in the NDA?,True,nda_acme_globex.pdf,2,GDPR
+How long do the confidentiality obligations survive?,True,nda_acme_globex.pdf,3,five years
+Where will NDA disputes be arbitrated?,True,nda_acme_globex.pdf,3,Frankfurt
+What budget did the board approve?,True,board_meeting_notes.txt,1,4.2 million
+Who will circulate the final budget pack and by when?,True,board_meeting_notes.txt,1,Maria will circulate
+What risk did the board raise?,True,board_meeting_notes.txt,1,vendor concentration
+What is the company's parental leave policy?,False,,,
+Which cryptocurrency wallet does the provider use?,False,,,
+What are the office hours of the London branch?,False,,,
+Who won the football world cup?,False,,,
+What is the recipe for chocolate cake?,False,,,

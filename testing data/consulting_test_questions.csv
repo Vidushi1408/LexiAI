@@ -1,0 +1,17 @@
+question,answerable,expected_document,expected_page,expected_answer_contains
+Who are the parties to the statement of work?,True,statement_of_work.pdf,1,Beacon Strategy Group
+How long does the supply chain engagement run?,True,statement_of_work.pdf,1,twelve weeks
+What is the final deliverable of the engagement?,True,statement_of_work.pdf,2,implementation roadmap
+What are the total fees for the engagement?,True,statement_of_work.pdf,3,"480,000"
+What is the cap on travel expenses for the engagement?,True,statement_of_work.pdf,3,"20,000"
+What notice is required to terminate the statement of work for convenience?,True,statement_of_work.pdf,4,fourteen days
+What is the cap on the consultant's liability?,True,statement_of_work.pdf,5,fees paid under this Statement of Work
+What concern did the client raise in the kickoff workshop?,True,client_workshop_transcript.txt,1,warehouse capacity
+What did Priya agree to do after the kickoff workshop?,True,client_workshop_transcript.txt,1,send the data
+How large is the Southeast Asia online grocery delivery market in 2025?,True,market_research_brief.pdf,1,9.4 billion
+What are the top two drivers of customer churn in the sector?,True,market_research_brief.pdf,2,delivery speed
+Which competitor has the largest market share?,True,market_research_brief.pdf,2,RedCart
+What is the firm's policy on employee equity grants?,False,,,
+Who is the client's chief marketing officer?,False,,,
+What was the outcome of the 2023 annual partner retreat?,False,,,
+What programming languages does the firm's data team use?,False,,,
