@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}First-time setup{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <div class="card">
+    <h1 style="margin-bottom:4px;">🏢 Lexi AI</h1>
+    <p class="page-caption" style="margin-bottom:20px;">First-time setup — create the administrator account.</p>
+    {% if error %}<div class="flash flash-error" style="margin-bottom:16px;">{{ error }}</div>{% endif %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label>Administrator username</label>
+        <input type="text" name="username" autofocus required>
+      </div>
+      <div class="field">
+        <label>Password (min 10 characters)</label>
+        <input type="password" name="password" required minlength="10">
+      </div>
+      <div class="field">
+        <label>Confirm password</label>
+        <input type="password" name="confirm" required minlength="10">
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Create administrator</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

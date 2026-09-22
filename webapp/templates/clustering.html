@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Document Clustering &amp; Tagging{% endblock %}
+{% block content %}
+{{ m.page_header("📁", "Document Clustering & Content Tagging", "Classify and tag sentence provisions into Risk, Decision, Action Item, Deadline, and Financial categories") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<p>Classified <strong>{{ total }}</strong> sentences into operational clusters.</p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field" style="max-width:260px;">
+    <label>Filter sentence provisions by tag</label>
+    <select name="tag" onchange="this.form.submit()">
+      {% for t in tags %}<option value="{{ t }}" {{ "selected" if t == tag }}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  <noscript><button class="btn btn-primary" type="submit">Filter</button></noscript>
+</form>
+
+{% for s in matched %}
+<div class="card" style="padding:12px 16px;">
+  <span style="color:var(--accent);font-weight:700;">[{{ tag }}]</span> {{ s }}
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

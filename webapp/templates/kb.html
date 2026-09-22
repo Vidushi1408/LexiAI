@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Knowledge Base &amp; Upload{% endblock %}
+{% block content %}
+{{ m.page_header("📚", "Enterprise Knowledge Base", "Contracts · SOPs · Policies · Reports · Research Papers · Meeting Notes · Financial Statements · Presentations") }}
+<p class="small muted" style="margin-top:-14px;margin-bottom:20px;">Formats: PDF, DOCX, XLSX, PPTX, CSV, TXT, EML, MP3/WAV</p>
+
+{% if not can_upload() %}
+<div class="empty-state">Your role ({{ current_role() }}) can't upload documents. Ask an admin for the analyst or admin role.</div>
+{% else %}
+
+<div class="card">
+  <form method="post" action="{{ url_for('kb.upload') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="documents">Upload documents</label>
+    <div class="file-drop">
+      <input type="file" id="documents" name="documents" multiple
+             accept=".pdf,.docx,.xlsx,.xls,.pptx,.csv,.txt,.md,.eml,.mp3,.wav" style="width:100%;">
+      <p class="help-text">PDF, DOCX, XLSX, PPTX, CSV, TXT, MD, EML, MP3, WAV — multiple files allowed.</p>
+    </div>
+    <button class="btn btn-primary mt-lg" type="submit">⬆️ Upload documents</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-row">
+    <div>
+      <strong>🔒 Zero-retention mode</strong>
+      <p class="help-text" style="margin-top:2px;">Nothing about your documents is written to disk: no saved index, no embedding cache.</p>
+    </div>
+    <form method="post" action="{{ url_for('kb.set_zero_retention') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="pill" style="cursor:pointer;">
+        <input type="checkbox" name="zero_retention" onchange="this.form.submit()" {{ "checked" if state.zero_retention }}>
+        {{ "On" if state.zero_retention else "Off" }}
+      </label>
+    </form>
+  </div>
+</div>
+
+{% if state.raw_text %}
+<div class="card">
+  <div class="card-row">
+    <div>
+      {% if state.processed %}
+        <span class="badge badge-pass">Processed</span>
+      {% else %}
+        <span class="badge badge-review">Not processed</span>
+      {% endif %}
+      <strong style="margin-left:8px;">{{ state.file_name }}</strong>
+    </div>
+    <div>
+      {% if not state.processed %}
+      <form method="post" action="{{ url_for('kb.process') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary" type="submit">⚡ Process Knowledge Base</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('kb.clear') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger" type="submit">🔄 Clear &amp; upload new</button>
+      </form>
+    </div>
+  </div>
+  <p class="small muted">Total characters: {{ "{:,}".format(state.raw_text|length) }} · Words: {{ "{:,}".format(state.raw_text.split()|length) }}</p>
+  {% if state.flat_ingestion %}
+  <p class="small" style="color:var(--amber);margin-top:6px;">
+    ℹ️ {{ state.flat_ingestion|join(", ") }}: ingested as a single block of text — citations for
+    {{ "this file" if state.flat_ingestion|length == 1 else "these files" }} will show "Full document"
+    instead of a row or page number.
+  </p>
+  {% endif %}
+  {% if preview %}
+  <details>
+    <summary class="small" style="cursor:pointer;color:var(--accent);">🔍 View raw extracted text</summary>
+    <pre class="small" style="white-space:pre-wrap;margin-top:10px;color:var(--text-dim);">{{ preview }}</pre>
+  </details>
+  {% endif %}
+</div>
+{% else %}
+<div class="empty-state">👆 Upload business documents above to build your knowledge base.</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

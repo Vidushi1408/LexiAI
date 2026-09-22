@@ -1,0 +1,16 @@
+{% macro page_header(icon, title, caption) -%}
+<div class="page-header">
+  <h1><span class="page-icon">{{ icon }}</span>{{ title }}</h1>
+  {% if caption %}<p class="page-caption">{{ caption }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro empty_state(message) -%}
+<div class="empty-state">⚠️ {{ message }} <a href="{{ url_for('kb.index') }}">Go to Knowledge Base &amp; Upload &rarr;</a></div>
+{%- endmacro %}
+
+{% macro badge(status) -%}
+{% if status == 'PASS' %}<span class="badge badge-pass">PASS</span>
+{% elif status == 'FAIL' %}<span class="badge badge-fail">FAIL</span>
+{% else %}<span class="badge badge-review">REVIEW</span>{% endif %}
+{%- endmacro %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Hybrid Search{% endblock %}
+{% block content %}
+{{ m.page_header("🔎", "Hybrid Search Engine", "BM25 keyword matching + FAISS dense vector search") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label>Search keywords</label>
+    <input type="text" name="query" value="{{ query }}" placeholder="e.g. indemnity limitation liability" autofocus>
+  </div>
+  <button class="btn btn-primary" type="submit">Search</button>
+</form>
+
+{% for chunk, score, meta in results %}
+<div class="card">
+  <strong style="color:var(--accent);">Hybrid Score: {{ score }} | Doc: {{ meta.doc_name }} | {{ meta.location }}</strong>
+  <p class="small" style="margin-top:6px;">{{ chunk }}</p>
+  <p class="small muted">Vector Score: {{ meta.vector_score }} | BM25 Score: {{ meta.bm25_score }} | Matched Keywords: {{ meta.matched_keywords|join(", ") }}</p>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

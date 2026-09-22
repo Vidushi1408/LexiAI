@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<div class="card center" style="max-width:480px;margin:60px auto;">
+  <h1 style="font-size:2.4rem;">{{ code }}</h1>
+  <p>{{ message }}</p>
+  <a class="btn btn-primary" href="{{ url_for('main.landing') }}">Back to Lexi AI</a>
+</div>
+{% endblock %}

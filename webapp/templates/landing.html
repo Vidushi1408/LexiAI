@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Lexi AI{% endblock %}
+{% block content %}
+<div class="hero">
+  <div class="hero-badge">✦ Business Document Intelligence Platform</div>
+  <h1>Lexi AI</h1>
+  <p style="font-size:1.05rem;">Your Documents. Your Decisions. Instantly.</p>
+  <p>Lexi AI transforms contracts, reports, SOPs, financial documents, meeting notes, and enterprise
+    knowledge into executive insights, compliance checks, and cited answers in seconds.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('kb.index') if current_user() or not auth_enabled else url_for('auth.login') }}">🚀 Get started</a>
+    <a class="btn btn-ghost" href="{{ url_for('main.billing') }}">View pricing</a>
+  </div>
+</div>
+
+<h2 style="margin-bottom:16px;">💼 Enterprise Capabilities</h2>
+<div class="grid grid-4">
+  <div class="feat-card">
+    <div class="feat-icon">📋</div>
+    <div class="feat-title">Executive Briefing</div>
+    <div class="feat-desc">Structured bottom-line summaries, strategic decisions, major risks, key numbers, and confidence metrics.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">✅</div>
+    <div class="feat-title">Compliance Checker</div>
+    <div class="feat-desc">Rule-based &amp; LLM policy evaluation with verified quotes, comparing documents against your checklist.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">🏷️</div>
+    <div class="feat-title">Entity &amp; Clause Extraction</div>
+    <div class="feat-desc">Extract Organizations, People, Dates, Financials, Payment Terms, Penalty Clauses, and Obligations.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">💬</div>
+    <div class="feat-title">Document Q&amp;A &amp; Search</div>
+    <div class="feat-desc">Hybrid BM25 + FAISS vector search answering executive questions with numbered citations.</div>
+  </div>
+</div>
+{% endblock %}

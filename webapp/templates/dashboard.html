@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{{ m.page_header("📊", "Enterprise Intelligence Dashboard", "Live operational metrics across active knowledge bases") }}
+
+<div class="grid grid-5">
+  <div class="metric-card"><div class="metric-val">{{ 1 if state.raw_text else 0 }}</div><div class="metric-lbl">Active Knowledge Base</div></div>
+  <div class="metric-card"><div class="metric-val">{{ "{:,}".format(words) }}</div><div class="metric-lbl">Words Analyzed</div></div>
+  <div class="metric-card"><div class="metric-val">{{ chunks }}</div><div class="metric-lbl">Vector Chunks</div></div>
+  <div class="metric-card" {{ 'title="Ask a question in Document Q&A to see this"' | safe if not avg_grounding }}>
+    <div class="metric-val">{{ avg_grounding or "—" }}</div>
+    <div class="metric-lbl">Avg Grounding Score{{ " · " + avg_grounding_label if avg_grounding_label }}</div>
+  </div>
+  <div class="metric-card" {{ 'title="Run a Compliance Checker evaluation to see this"' | safe if violations is none }}>
+    <div class="metric-val">{{ violations if violations is not none else "—" }}</div><div class="metric-lbl">Compliance Violations</div>
+  </div>
+</div>
+
+<h2 class="mt-lg" style="margin-bottom:12px;">📈 Analytics Overview</h2>
+<div class="flash flash-info">Knowledge base status: {{ "Ready for analysis" if state.processed else "Awaiting document upload" }}</div>
+
+<div class="grid grid-3 mt-lg">
+  <a class="feat-card" href="{{ url_for('kb.index') }}"><div class="feat-icon">📚</div><div class="feat-title">Knowledge Base &amp; Upload</div><div class="feat-desc">Ingest and process documents.</div></a>
+  <a class="feat-card" href="{{ url_for('features.qa') }}"><div class="feat-icon">💬</div><div class="feat-title">Document Q&amp;A</div><div class="feat-desc">Ask cited questions.</div></a>
+  <a class="feat-card" href="{{ url_for('features.compliance') }}"><div class="feat-icon">✅</div><div class="feat-title">Compliance Checker</div><div class="feat-desc">Run a policy evaluation.</div></a>
+</div>
+{% endblock %}

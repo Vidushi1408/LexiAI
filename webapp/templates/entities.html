@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Entity &amp; Clause Extraction{% endblock %}
+{% block content %}
+{{ m.page_header("🏷️", "Entity & Contract Clause Extraction", "Organizations, People, Dates, Deadlines, Financials, Payment Terms, Obligations, and Risks") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-primary" type="submit">🔍 Run Extraction</button>
+</form>
+
+{% if categories %}
+<div class="grid grid-3">
+  {% for icon, title, items in categories %}
+  <div class="card">
+    <strong style="color:var(--accent);">{{ icon }} {{ title }} ({{ items|length }})</strong>
+    {% for it in items[:6] %}
+    <div class="small" style="margin:4px 0;color:var(--text-dim);">• {{ it }}</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

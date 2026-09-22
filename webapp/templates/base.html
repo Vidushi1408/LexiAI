@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Lexi AI{% endblock %} · Lexi AI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+{% block head %}{% endblock %}
+</head>
+<body>
+
+{% if current_user() or not auth_enabled %}
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('main.landing') }}">🏢 <span>Lexi AI</span></a>
+
+    <div class="topbar-right">
+      <span class="llm-pill {{ 'ok' if llm_ok else 'warn' }}" title="{{ llm_msg }}">
+        <span class="dot"></span>{{ 'Ollama online' if llm_ok else 'Ollama offline' }}
+      </span>
+      {% if current_user() %}
+      <span class="user-pill">👤 {{ current_user().username }} · {{ current_role() }}</span>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit">Sign out</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <nav class="primary-nav">
+    <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('kb.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('kb.') }}">Knowledge Base</a>
+    <a href="{{ url_for('features.briefing') }}" class="{{ 'active' if request.endpoint == 'features.briefing' }}">Briefings</a>
+    <a href="{{ url_for('features.compliance') }}" class="{{ 'active' if request.endpoint == 'features.compliance' }}">Compliance</a>
+    <a href="{{ url_for('features.entities') }}" class="{{ 'active' if request.endpoint == 'features.entities' }}">Entities</a>
+    <a href="{{ url_for('features.qa') }}" class="{{ 'active' if request.endpoint == 'features.qa' }}">Q&amp;A</a>
+    <a href="{{ url_for('features.actions') }}" class="{{ 'active' if request.endpoint == 'features.actions' }}">Actions</a>
+    <a href="{{ url_for('features.clustering') }}" class="{{ 'active' if request.endpoint == 'features.clustering' }}">Tagging</a>
+    <a href="{{ url_for('features.search') }}" class="{{ 'active' if request.endpoint == 'features.search' }}">Search</a>
+    <a href="{{ url_for('main.billing') }}" class="{{ 'active' if request.endpoint == 'main.billing' }}">Billing</a>
+    {% if is_admin() %}
+    <a href="{{ url_for('main.audit_log') }}" class="{{ 'active' if request.endpoint == 'main.audit_log' }}">Audit</a>
+    <a href="{{ url_for('main.settings_page') }}" class="{{ 'active' if request.endpoint == 'main.settings_page' }}">Settings</a>
+    {% endif %}
+  </nav>
+</header>
+{% endif %}
+
+<main class="page">
+  <div class="page-inner">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block page_header %}{% endblock %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="site-footer">Lexi AI · Enterprise Document Intelligence Platform · Secured &amp; Encrypted</footer>
+
+</body>
+</html>

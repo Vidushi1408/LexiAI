@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Compliance Checker{% endblock %}
+{% block content %}
+{{ m.page_header("✅", "Compliance & Audit Evaluation Engine", "Evaluate documents against enterprise compliance policies and regulatory checklists") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label>Optional custom policy rules / checklist (leave blank for standard audit rules)</label>
+    <textarea name="custom_rules">{{ custom_rules }}</textarea>
+  </div>
+  <button class="btn btn-primary" type="submit">🔍 Evaluate Compliance</button>
+</form>
+
+{% if state.compliance_result %}
+{% for item in state.compliance_result %}
+<div class="card">
+  <div class="card-row">
+    <strong>{{ item.requirement }}</strong>
+    {{ m.badge(item.status) }}
+  </div>
+  <p class="small"><strong>Explanation:</strong> {{ item.explanation }}</p>
+  <p class="small muted"><strong>Recommendation:</strong> {{ item.recommendation }}</p>
+  <p class="small muted">Evidence: &ldquo;{{ item.citation }}&rdquo; | Quote {{ "verified ✓" if item.quote_verified else "not verified" }}</p>
+</div>
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endblock %}

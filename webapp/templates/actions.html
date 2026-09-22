@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Action Item Extractor{% endblock %}
+{% block content %}
+{{ m.page_header("⚡", "Action Item Extractor", "Extract High, Medium, and Low priority operational tasks from transcripts, emails, and notes") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-primary" type="submit">⚡ Extract Action Items</button>
+</form>
+
+{% for item in state.action_items_result or [] %}
+<div class="card priority-{{ item.priority }}">
+  <strong>{{ item.task }}</strong>
+  <p class="small muted" style="margin-top:6px;">
+    <strong>Priority:</strong> {{ item.priority }} · <strong>Owner:</strong> {{ item.owner }} ·
+    <strong>Deadline:</strong> {{ item.deadline }} · <strong>Status:</strong> {{ item.status }}
+  </p>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

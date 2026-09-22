@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Document Q&amp;A{% endblock %}
+{% block content %}
+{{ m.page_header("💬", "Executive Document Q&A", "Ask questions grounded directly in your uploaded knowledge base, with hybrid citations") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label>Ask a question about your business documents</label>
+    <input type="text" name="question" value="{{ question }}" placeholder="e.g. What is the notice period for contract termination?" autofocus required>
+  </div>
+  <button class="btn btn-primary" type="submit">Ask Lexi</button>
+</form>
+
+{% if result %}
+<div class="card prose">{{ result.answer | markdown }}</div>
+
+{% if result.citations %}
+<div class="card">
+  <strong>📎 Sources ({{ result.citations|length }})</strong>
+  {% for src in result.citations %}
+  <div class="card" style="margin-top:10px;">
+    <div class="small"><strong>[{{ src.n }}] {{ src.doc }} — {{ src.location }}</strong> · relevance {{ "%.2f"|format(src.score) }} ·
+      {{ "✅ cited" if src.cited else "not cited" }}</div>
+    <p class="small muted" style="margin-top:6px;">{{ src.text }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}

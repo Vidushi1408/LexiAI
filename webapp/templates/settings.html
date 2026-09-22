@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+{{ m.page_header("⚙️", "Enterprise Settings") }}
+
+<div class="card">
+  <div class="field"><label>Organization Name</label><input type="text" value="Acme Corp" disabled></div>
+  <div class="field"><label>Department / Unit</label><input type="text" value="Legal &amp; Compliance" disabled></div>
+  <div class="field">
+    <label>Default LLM Engine</label>
+    <select disabled><option>LLaMA 3.2 3B (Local Ollama)</option></select>
+  </div>
+  <div class="field">
+    <label>Citation Style</label>
+    <select disabled><option>Executive Inline Citations</option></select>
+  </div>
+</div>
+
+{% if auth_enabled %}
+<h2 style="margin:24px 0 12px;">👥 User Management</h2>
+<div class="card" style="overflow-x:auto;">
+  <table>
+    <thead><tr><th>Username</th><th>Role</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr><td>{{ u.username }}</td><td>{{ u.role }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="form" value="add_user">
+  <div class="grid grid-3">
+    <div class="field"><label>New username</label><input type="text" name="username" required></div>
+    <div class="field">
+      <label>Role</label>
+      <select name="role">
+        {% for r in roles %}<option value="{{ r }}" {{ "selected" if r == "analyst" }}>{{ r }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field"><label>Temporary password (min 10 characters)</label><input type="password" name="password" minlength="10" required></div>
+  </div>
+  <p class="help-text">viewer: ask questions · analyst: upload and run analyses · admin: everything, incl. audit log</p>
+  <button class="btn btn-primary" type="submit">Add user</button>
+</form>
+{% endif %}
+{% endblock %}

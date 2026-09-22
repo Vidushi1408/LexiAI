@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Executive Briefings{% endblock %}
+{% block content %}
+{{ m.page_header("📋", "Executive Briefing Generator", "Structured high-level briefs: Bottom Line, Key Decisions, Major Risks, Key Numbers, Recommended Actions") }}
+
+{% if not state.processed %}
+  {{ m.empty_state("Please upload and process documents first.") }}
+{% else %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field" style="max-width:260px;">
+    <label>Briefing style</label>
+    <select name="style">
+      {% for opt in ["concise", "detailed", "bullets"] %}
+      <option value="{{ opt }}" {{ "selected" if opt == style }}>{{ opt.capitalize() }} Briefing</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn btn-primary" type="submit">🚀 Generate Executive Briefing</button>
+</form>
+
+{% if state.summary_result %}
+<div class="card prose">{{ state.summary_result | markdown }}</div>
+{% endif %}
+{% endif %}
+{% endblock %}
