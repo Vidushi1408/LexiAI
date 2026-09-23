@@ -24,7 +24,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| **UI Framework** | Streamlit (Dark SaaS Professional Theme) |
+| **UI Framework** | Flask · Jinja2 server-rendered pages (Dark SaaS Professional Theme), served by gunicorn |
 | **NLP Preprocessing** | NLTK · spaCy · Regex |
 | **Text Classification** | PyTorch · ANN · CNN · LSTM |
 | **Sentence Embeddings** | SentenceTransformers (`all-MiniLM-L6-v2`) |
@@ -40,9 +40,23 @@
 ```
 LEXI AI/
 │
-├── app.py                          # Main Lexi AI Streamlit Application
+├── app.py                          # Flask entrypoint (`python app.py`, or gunicorn app:app)
+├── config.py                       # Central settings (env vars / .env)
 ├── requirements.txt                # Enterprise Python Dependencies
 ├── README.md                       # Platform Documentation
+│
+├── webapp/                         # Flask application: one page per feature
+│   ├── __init__.py                 # App factory (create_app)
+│   ├── state.py                    # Per-session knowledge-base state
+│   ├── security.py                 # Login/role decorators, CSRF, audit helper
+│   ├── uploads.py                  # Adapts Flask uploads to the reader/validator
+│   ├── markdown_utils.py           # Sanitised markdown rendering for LLM output
+│   ├── blueprints/                 # auth · main (dashboard/audit/settings) · kb · features
+│   ├── templates/                  # Jinja2 pages (base.html + one per feature)
+│   └── static/css/style.css        # Design system
+│
+├── auth/                           # Local users (scrypt), roles (viewer/analyst/admin)
+├── audit/                          # Tamper-evident (hash-chained) audit log
 │
 ├── preprocessing/                  # Text Cleaning & Tokenization Pipeline
 │   ├── cleaner.py                  # Noise removal & regex cleaning
@@ -74,9 +88,10 @@ LEXI AI/
 │   └── action_item_extractor.py    # Action Item Extractor from transcripts/emails
 │
 ├── rag/                            # Retrieval-Augmented Generation
-│   ├── indexer.py                  # Chunking & FAISS Vector indexing
+│   ├── indexer.py                  # Chunking & FAISS Vector indexing (keeps true page provenance)
 │   ├── retriever.py                # Hybrid Search Engine (BM25 + Vector)
-│   ├── qa_chain.py                 # QA Chain helper
+│   ├── citations.py                # Numbered sources + citation verification
+│   ├── injection.py                # Prompt-injection heuristic scan on uploads
 │   └── agent.py                    # Multi-tool Agentic Document Q&A loop
 │
 ├── utils/
@@ -101,8 +116,13 @@ pip install -r requirements.txt
 ### Run Lexi AI Platform
 
 ```bash
-streamlit run app.py
+python app.py                # dev server with auto-reload, http://localhost:8000
+# or, like production:
+gunicorn -w 2 -b 0.0.0.0:8000 --timeout 120 app:app
 ```
+
+The first visit prompts you to create the administrator account. See `.env.example` for configuration
+(login, zero-retention mode, upload limits, the LLM endpoint, and `LEXI_SECRET_KEY` for the session cookie).
 
 ### Local LLM Engine (Optional for Generative Features)
 
