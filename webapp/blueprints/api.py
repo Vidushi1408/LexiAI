@@ -92,13 +92,11 @@ def process():
     if not state.raw_text:
         return jsonify(error="nothing_to_process", message="Call /ingest first."), 409
 
-    from generative.explainer import set_notes_context
     from preprocessing.pipeline import run_preprocessing_pipeline
     from rag.indexer import index_document
 
     result = run_preprocessing_pipeline(state.raw_text)
     state.pipeline_result = result
-    set_notes_context(result["sentences"])
 
     idx, chunks = index_document(state.raw_text, chunk_size=3, overlap=1, save=True,
                                   pages=state.pages, persist=not state.zero_retention)

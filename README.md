@@ -87,7 +87,6 @@ LEXI AI/
 ├── generative/                     # Business Intelligence Generators
 │   ├── summarizer.py               # Executive Briefing generator
 │   ├── quiz_generator.py           # Compliance Checker engine
-│   ├── explainer.py                # Clause & Provision explainer
 │   └── action_item_extractor.py    # Action Item Extractor from transcripts/emails
 │
 ├── rag/                            # Retrieval-Augmented Generation
