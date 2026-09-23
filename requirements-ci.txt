@@ -1,7 +1,7 @@
 # Lightweight set used by CI: everything the unit tests and the BM25 eval gate import,
 # without torch / transformers / sentence-transformers (models are mocked in tests).
 numpy>=1.26.0
-pandas>=2.2.0
+pandas>=2.3.3
 faiss-cpu>=1.8.0
 rank-bm25>=0.2.2
 nltk>=3.8.1
