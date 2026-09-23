@@ -3,6 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
+import db
 from auth import users, roles
 from rag.injection import scan
 from utils.upload_guard import validate_upload, safe_filename
@@ -16,6 +17,15 @@ def _reset():
     users.reset_throttle()
 
 
+@pytest.fixture
+def db_session():
+    """An isolated in-memory SQLite session per test — same tables as production Postgres."""
+    db.reset_engine_for_tests()  # DATABASE_URL (a real Postgres in CI) or an in-memory SQLite fallback
+    s = db.new_session()
+    yield s
+    s.close()
+
+
 def test_password_hash_is_salted_and_verifies():
     a, b = users.hash_password("correct horse battery"), users.hash_password("correct horse battery")
     assert a != b and users.verify_password("correct horse battery", a)
@@ -23,42 +33,48 @@ def test_password_hash_is_salted_and_verifies():
     assert "correct" not in a
 
 
-def test_create_and_authenticate(tmp_path):
-    p = str(tmp_path / "u.json")
-    users.create_user("Priya", "a-long-password", "analyst", path=p)
-    user, _ = users.authenticate("priya", "a-long-password", path=p)
+def test_create_and_authenticate(db_session):
+    users.create_user("Priya", "a-long-password", "analyst", session=db_session)
+    user, _ = users.authenticate("priya", "a-long-password", session=db_session)
     assert user == {"username": "priya", "role": "analyst"}
-    assert oct(os.stat(p).st_mode & 0o777) == "0o600"          # file not world-readable
-    assert "a-long-password" not in open(p).read()
+    row = db_session.get(db.User, "priya")
+    assert "a-long-password" not in row.password_hash    # stored hashed, not in plaintext
 
 
 @pytest.mark.parametrize("name,pw,role", [("ab", "a-long-password", "admin"), ("ok_user", "short", "admin"),
                                           ("ok_user", "a-long-password", "root"), ("bad name!", "a-long-password", "admin")])
-def test_create_user_validation(tmp_path, name, pw, role):
+def test_create_user_validation(db_session, name, pw, role):
     with pytest.raises(ValueError):
-        users.create_user(name, pw, role, path=str(tmp_path / "u.json"))
+        users.create_user(name, pw, role, session=db_session)
 
 
-def test_duplicate_user_rejected(tmp_path):
-    p = str(tmp_path / "u.json")
-    users.create_user("bob", "a-long-password", "viewer", path=p)
+def test_duplicate_user_rejected(db_session):
+    users.create_user("bob", "a-long-password", "viewer", session=db_session)
     with pytest.raises(ValueError):
-        users.create_user("BOB", "another-long-password", "admin", path=p)
+        users.create_user("BOB", "another-long-password", "admin", session=db_session)
 
 
-def test_lockout_after_repeated_failures(tmp_path):
-    p = str(tmp_path / "u.json")
-    users.create_user("bob", "a-long-password", "viewer", path=p)
+def test_lockout_after_repeated_failures(db_session):
+    users.create_user("bob", "a-long-password", "viewer", session=db_session)
     for _ in range(users.MAX_FAILURES):
-        assert users.authenticate("bob", "nope-nope-nope", path=p)[0] is None
-    user, msg = users.authenticate("bob", "a-long-password", path=p)   # correct password, but locked
+        assert users.authenticate("bob", "nope-nope-nope", session=db_session)[0] is None
+    user, msg = users.authenticate("bob", "a-long-password", session=db_session)   # correct password, but locked
     assert user is None and "Too many" in msg
 
 
-def test_unknown_user_gets_same_message(tmp_path):
-    p = str(tmp_path / "u.json")
-    users.create_user("bob", "a-long-password", "viewer", path=p)
-    assert users.authenticate("ghost", "whatever-123", path=p)[1] == users.authenticate("bob", "wrong-password", path=p)[1]
+def test_unknown_user_gets_same_message(db_session):
+    users.create_user("bob", "a-long-password", "viewer", session=db_session)
+    assert (users.authenticate("ghost", "whatever-123", session=db_session)[1]
+            == users.authenticate("bob", "wrong-password", session=db_session)[1])
+
+
+def test_api_key_generation_and_lookup(db_session):
+    users.create_user("bob", "a-long-password", "analyst", session=db_session)
+    key = users.set_api_key("bob", session=db_session)
+    assert key.startswith("lexi_")
+    assert users.authenticate_api_key(key, session=db_session) == {"username": "bob", "role": "analyst"}
+    assert users.authenticate_api_key("lexi_wrong-key-entirely", session=db_session) is None
+    assert users.authenticate_api_key("not-even-the-right-prefix", session=db_session) is None
 
 
 def test_role_permissions():

@@ -18,3 +18,5 @@ models/embed_cache/
 data/processed/
 data/audit/
 data/auth/
+*.db
+*.sqlite3

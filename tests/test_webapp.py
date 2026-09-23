@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config as config_module
+import db
 from auth import users as auth_users
 
 CONTRACT = (b"Northwind Analytics Ltd. agrees to pay a fee of USD 18,500 within thirty days of invoice. "
@@ -28,9 +29,8 @@ def _fake_embed_query(query):
 
 @pytest.fixture
 def client(tmp_path):
-    """A Flask test client wired to per-test users/audit files, with the embedding model mocked out."""
-    object.__setattr__(config_module.settings, "users_path", str(tmp_path / "users.json"))
-    object.__setattr__(config_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
+    """A Flask test client wired to a per-test SQLite database, with the embedding model mocked out."""
+    db.reset_engine_for_tests(f"sqlite:///{tmp_path}/test.db")
     object.__setattr__(config_module.settings, "session_cookie_secure", False)
     auth_users.reset_throttle()
 
@@ -208,12 +208,20 @@ def test_viewer_role_is_enforced_on_every_analyst_route(client):
     _logout(client)
     _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
 
-    for path in ("/compliance", "/entities", "/briefings", "/actions", "/clustering", "/audit", "/settings"):
+    for path in ("/compliance", "/entities", "/briefings", "/actions", "/clustering", "/audit"):
         assert client.get(path).status_code == 403, path
     for path in ("/dashboard", "/qa", "/search", "/billing"):
         assert client.get(path).status_code == 200, path
 
     r = client.post("/knowledge-base/upload", data={"csrf_token": _token(client, "/knowledge-base/")})
+    assert r.status_code == 403
+
+    # /settings is viewable by any role now (to self-serve an API key), but its admin-only
+    # sections and actions still are not
+    settings_html = client.get("/settings").get_data(as_text=True)
+    assert "User Management" not in settings_html and "API Access" in settings_html
+    r = _post(client, "/settings", {"form": "add_user", "username": "sneaky", "role": "admin", "password": "whatever12"},
+              get_path="/settings")
     assert r.status_code == 403
 
 
@@ -246,3 +254,78 @@ def test_logout_route_clears_the_session(client):
     r = _post(client, "/logout", {}, get_path="/dashboard")
     assert r.status_code == 302 and r.headers["Location"].endswith("/login")
     assert client.get("/dashboard").status_code == 302
+
+
+# ── JSON API (/api/v1/*): bearer-token auth, no cookies, no CSRF ────────────
+
+def _generate_api_key(client) -> str:
+    html = _post(client, "/settings", {"form": "api_key"}, get_path="/settings").get_data(as_text=True)
+    m = re.search(r'<code[^>]*>(lexi_[^<]+)</code>', html)
+    assert m, "no API key found in the settings response"
+    return m.group(1)
+
+
+def test_api_key_generation_and_whoami(client):
+    _setup_admin(client)
+    key = _generate_api_key(client)
+    assert key.startswith("lexi_")
+
+    r = client.get("/api/v1/whoami", headers={"Authorization": f"Bearer {key}"})
+    assert r.status_code == 200 and r.get_json() == {"username": "admin.one", "role": "admin"}
+
+    _logout(client)  # drop the browser session cookie so the next call has no auth of any kind
+    assert client.get("/api/v1/whoami").status_code == 401
+    assert client.get("/api/v1/whoami", headers={"Authorization": "Bearer lexi_garbage"}).status_code == 401
+
+
+def test_api_ingest_process_and_ask_needs_no_csrf_token(client):
+    _setup_admin(client)
+    key = _generate_api_key(client)
+    headers = {"Authorization": f"Bearer {key}"}
+
+    # no csrf_token anywhere in this request — API-key auth is exempt, unlike the browser forms
+    r = client.post("/api/v1/ingest", headers=headers,
+                     data={"documents": (io.BytesIO(CONTRACT), "contract.txt")}, content_type="multipart/form-data")
+    assert r.status_code == 200 and r.get_json()["loaded"] == ["contract.txt"]
+
+    r = client.post("/api/v1/process", headers=headers)
+    assert r.status_code == 200 and r.get_json()["processed"] is True
+
+    with patch("rag.agent._call_ollama", return_value="The fee is due within thirty days [1]."):
+        r = client.post("/api/v1/ask", headers=headers, json={"question": "When is payment due?"})
+    body = r.get_json()
+    assert r.status_code == 200 and "thirty days" in body["answer"] and body["citations"]
+
+    r = client.get("/api/v1/status", headers=headers)
+    assert r.get_json()["processed"] is True and r.get_json()["chunks"] > 0
+
+
+def test_api_key_gives_a_separate_knowledge_base_from_the_browser_session(client):
+    """An API caller has no cookie jar, so it gets one persistent slot per account — proven here
+    by never touching the browser session's own knowledge base."""
+    _setup_admin(client)
+    key = _generate_api_key(client)
+    client.post("/api/v1/ingest", headers={"Authorization": f"Bearer {key}"},
+                data={"documents": (io.BytesIO(CONTRACT), "contract.txt")}, content_type="multipart/form-data")
+    status = client.get("/api/v1/status", headers={"Authorization": f"Bearer {key}"}).get_json()
+    assert status["file_name"] == "contract.txt"
+    # the logged-in browser session's own (separate) knowledge base was never touched
+    assert "contract.txt" not in client.get("/knowledge-base/").get_data(as_text=True)
+
+
+def test_api_analyst_only_route_rejects_a_viewer_key(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    _logout(client)
+    _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
+    key = _generate_api_key(client)
+
+    r = client.post("/api/v1/ingest", headers={"Authorization": f"Bearer {key}"})
+    assert r.status_code == 403 and r.get_json()["error"] == "forbidden"
+
+
+def test_api_ask_before_processing_returns_409(client):
+    _setup_admin(client)
+    key = _generate_api_key(client)
+    r = client.post("/api/v1/ask", headers={"Authorization": f"Bearer {key}"}, json={"question": "anything?"})
+    assert r.status_code == 409 and r.get_json()["error"] == "not_processed"

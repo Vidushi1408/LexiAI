@@ -2,12 +2,13 @@
 """Landing page, dashboard, billing, audit log and settings/user management."""
 import json
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from audit import log as audit
+from auth import roles as auth_roles
 from auth import users as auth_users
 from config import settings
-from webapp.security import audit_event, login_required, role_required
+from webapp.security import audit_event, current_role, current_user, login_required, role_required
 from webapp.state import get_state
 
 bp = Blueprint("main", __name__)
@@ -64,9 +65,11 @@ def audit_export():
 
 
 @bp.route("/settings", methods=["GET", "POST"])
-@role_required("admin")
+@login_required
 def settings_page():
     if request.method == "POST" and request.form.get("form") == "add_user":
+        if not auth_roles.is_admin(current_role()):
+            abort(403)
         nu, nr, npw = request.form.get("username", ""), request.form.get("role", ""), request.form.get("password", "")
         try:
             auth_users.create_user(nu, npw, nr)
@@ -76,7 +79,14 @@ def settings_page():
             flash(str(e), "error")
         return redirect(url_for("main.settings_page"))
 
-    # This route is already @role_required("admin"), so anyone rendering this page is an admin —
-    # the user-management section only needs to check whether auth is enabled at all.
-    return render_template("settings.html", users=auth_users.list_users(), roles=auth_users.ROLES,
-                           auth_enabled=settings.auth_enabled)
+    if request.method == "POST" and request.form.get("form") == "api_key":
+        username = current_user()["username"]
+        new_key = auth_users.set_api_key(username)
+        audit_event("api_key_generated", target=username)
+        flash("New API key generated below — copy it now, it won't be shown again.", "success")
+        return render_template("settings.html", users=auth_users.list_users(), roles=auth_users.ROLES,
+                               auth_enabled=settings.auth_enabled, new_api_key=new_key)
+
+    users_list = auth_users.list_users() if auth_roles.is_admin(current_role()) else None
+    return render_template("settings.html", users=users_list, roles=auth_users.ROLES,
+                           auth_enabled=settings.auth_enabled, new_api_key=None)

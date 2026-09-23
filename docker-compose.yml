@@ -9,10 +9,29 @@ services:
       LEXI_ZERO_RETENTION: ${LEXI_ZERO_RETENTION:-0}
       LEXI_SECRET_KEY: ${LEXI_SECRET_KEY:-}
       LEXI_SESSION_COOKIE_SECURE: ${LEXI_SESSION_COOKIE_SECURE:-1}
+      DATABASE_URL: postgresql+psycopg://lexi:${POSTGRES_PASSWORD:-lexi}@postgres:5432/lexi
     volumes:
       - lexi-data:/app/data
     depends_on:
-      - ollama
+      ollama:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lexi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lexi}
+      POSTGRES_DB: lexi
+    volumes:
+      - lexi-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lexi -d lexi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   ollama:
@@ -32,4 +51,5 @@ services:
 
 volumes:
   lexi-data:
+  lexi-postgres:
   ollama-models:

@@ -18,6 +18,24 @@
 </div>
 
 {% if auth_enabled %}
+<h2 style="margin:24px 0 12px;">🔑 API Access</h2>
+<div class="card">
+  <p class="small muted">Call the JSON API (<code>/api/v1/*</code>) as yourself from a script, with
+    <code>Authorization: Bearer &lt;key&gt;</code>. A key sees its own knowledge base, independent of your browser session.</p>
+  {% if new_api_key %}
+  <div class="flash flash-warning" style="margin:10px 0;">
+    <strong>Copy this now — it won't be shown again:</strong>
+    <code style="user-select:all;display:block;margin-top:6px;word-break:break-all;">{{ new_api_key }}</code>
+  </div>
+  {% endif %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form" value="api_key">
+    <button class="btn btn-primary" type="submit">{{ "Generate new API key (invalidates the old one)" if new_api_key else "Generate API key" }}</button>
+  </form>
+</div>
+
+{% if is_admin() %}
 <h2 style="margin:24px 0 12px;">👥 User Management</h2>
 <div class="card" style="overflow-x:auto;">
   <table>
@@ -46,5 +64,6 @@
   <p class="help-text">viewer: ask questions · analyst: upload and run analyses · admin: everything, incl. audit log</p>
   <button class="btn btn-primary" type="submit">Add user</button>
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}

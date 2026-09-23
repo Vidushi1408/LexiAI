@@ -34,6 +34,9 @@ def create_app() -> Flask:
     configure_logging()
     _ensure_nltk_data()
 
+    import db
+    db.init_db()
+
     app = Flask(__name__)
     app.config.update(
         SECRET_KEY=settings.secret_key,
@@ -43,12 +46,14 @@ def create_app() -> Flask:
         MAX_CONTENT_LENGTH=max(settings.max_upload_mb, settings.max_audio_mb) * 1024 * 1024 * 20,  # allow several files
     )
 
-    from webapp import security
+    from webapp import security, state as kb_state
     security.init_app(app)
+    kb_state.init_app(app)
 
     from webapp.markdown_utils import render_markdown
     app.jinja_env.filters["markdown"] = render_markdown
 
+    from webapp.blueprints.api import bp as api_bp
     from webapp.blueprints.auth import bp as auth_bp
     from webapp.blueprints.features import bp as features_bp
     from webapp.blueprints.kb import bp as kb_bp
@@ -57,6 +62,7 @@ def create_app() -> Flask:
     app.register_blueprint(main_bp)
     app.register_blueprint(kb_bp)
     app.register_blueprint(features_bp)
+    app.register_blueprint(api_bp)
 
     @app.context_processor
     def _inject_llm_status():

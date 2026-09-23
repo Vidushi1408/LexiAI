@@ -3,7 +3,7 @@
 import logging
 from functools import wraps
 
-from flask import abort, flash, redirect, request, session, url_for
+from flask import abort, flash, g, jsonify, redirect, request, session, url_for
 
 from audit import log as audit
 from auth import roles as auth_roles
@@ -13,7 +13,9 @@ log = logging.getLogger("lexi.web.security")
 
 
 def current_user() -> dict | None:
-    return session.get("user")
+    """The signed-in user — from an API bearer token if one authenticated this request,
+    otherwise from the browser session cookie."""
+    return getattr(g, "api_user", None) or session.get("user")
 
 
 def current_role() -> str:
@@ -55,6 +57,28 @@ def analyst_required(view):
     return wrapped
 
 
+def api_login_required(view):
+    """Like login_required, but for the JSON API: a 401 body instead of a redirect to /login."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if settings.auth_enabled and not current_user():
+            return jsonify(error="unauthorized",
+                           message="Sign in, or send a valid API key as 'Authorization: Bearer <key>'."), 401
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def api_analyst_required(view):
+    """Like analyst_required, but for the JSON API: a 403 body instead of an HTML error page."""
+    @wraps(view)
+    @api_login_required
+    def wrapped(*args, **kwargs):
+        if not auth_roles.can_upload(current_role()):
+            return jsonify(error="forbidden", message="This action needs the analyst or admin role."), 403
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def audit_event(action: str, **details) -> None:
     """Record an audit event for the signed-in user (metadata only — never document text)."""
     try:
@@ -80,13 +104,23 @@ def validate_csrf() -> bool:
 
 
 def init_app(app) -> None:
-    """Reject any state-changing POST/PUT/DELETE without a valid CSRF token."""
+    """Authenticate any 'Authorization: Bearer <key>' header into g.api_user, then reject any
+    state-changing POST/PUT/DELETE without a valid CSRF token — except requests already
+    authenticated by an API key, which aren't cookie-based and so aren't CSRF-able."""
     @app.before_request
-    def _check_csrf():
-        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not validate_csrf():
-            log.warning("CSRF check failed for %s %s", request.method, request.path)
-            flash("Your session expired or the form was resubmitted. Please try again.", "error")
-            return redirect(request.referrer or url_for("main.landing"))
+    def _security_gate():
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            from auth.users import authenticate_api_key
+            user = authenticate_api_key(auth_header.removeprefix("Bearer ").strip())
+            if user:
+                g.api_user = user
+
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and not getattr(g, "api_user", None):
+            if not validate_csrf():
+                log.warning("CSRF check failed for %s %s", request.method, request.path)
+                flash("Your session expired or the form was resubmitted. Please try again.", "error")
+                return redirect(request.referrer or url_for("main.landing"))
 
     app.jinja_env.globals["csrf_token"] = csrf_token
     app.jinja_env.globals["current_user"] = current_user

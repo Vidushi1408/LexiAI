@@ -25,6 +25,8 @@
 | Layer | Technology |
 |-------|-----------|
 | **UI Framework** | Flask · Jinja2 server-rendered pages (Dark SaaS Professional Theme), served by gunicorn |
+| **JSON API** | `/api/v1/*` inside the same Flask app, bearer-token (API key) or session auth |
+| **Persistence** | Postgres in production (SQLAlchemy), a local SQLite file for zero-setup development |
 | **NLP Preprocessing** | NLTK · Regex |
 | **Text Classification** | PyTorch · ANN · CNN · LSTM |
 | **Sentence Embeddings** | SentenceTransformers (`all-MiniLM-L6-v2`) |
@@ -42,20 +44,21 @@ LEXI AI/
 │
 ├── app.py                          # Flask entrypoint (`python app.py`, or gunicorn app:app)
 ├── config.py                       # Central settings (env vars / .env)
+├── db.py                           # SQLAlchemy engine/session + ORM models (users, audit, KB state)
 ├── requirements.txt                # Enterprise Python Dependencies
 ├── README.md                       # Platform Documentation
 │
-├── webapp/                         # Flask application: one page per feature
+├── webapp/                         # Flask application: one page per feature, plus the JSON API
 │   ├── __init__.py                 # App factory (create_app)
-│   ├── state.py                    # Per-session knowledge-base state
-│   ├── security.py                 # Login/role decorators, CSRF, audit helper
+│   ├── state.py                    # Per-session knowledge-base state, persisted in Postgres/SQLite
+│   ├── security.py                 # Login/role decorators, API-key auth, CSRF, audit helper
 │   ├── uploads.py                  # Adapts Flask uploads to the reader/validator
 │   ├── markdown_utils.py           # Sanitised markdown rendering for LLM output
-│   ├── blueprints/                 # auth · main (dashboard/audit/settings) · kb · features
+│   ├── blueprints/                 # auth · main (dashboard/audit/settings) · kb · features · api
 │   ├── templates/                  # Jinja2 pages (base.html + one per feature)
 │   └── static/css/style.css        # Design system
 │
-├── auth/                           # Local users (scrypt), roles (viewer/analyst/admin)
+├── auth/                           # Local users (scrypt), API keys, roles (viewer/analyst/admin)
 ├── audit/                          # Tamper-evident (hash-chained) audit log
 │
 ├── preprocessing/                  # Text Cleaning & Tokenization Pipeline
@@ -124,12 +127,33 @@ gunicorn -w 2 -b 0.0.0.0:8000 --timeout 120 app:app
 The first visit prompts you to create the administrator account. See `.env.example` for configuration
 (login, zero-retention mode, upload limits, the LLM endpoint, and `LEXI_SECRET_KEY` for the session cookie).
 
+With no `DATABASE_URL` set, users/audit/knowledge-base state live in a local SQLite file
+(`data/lexi.db`) — nothing else to run. Point `DATABASE_URL` at a Postgres instance
+(`postgresql+psycopg://user:pass@host:5432/db`) for production; `docker compose up` does this for
+you automatically against the bundled Postgres service.
+
 ### Local LLM Engine (Optional for Generative Features)
 
 ```bash
 ollama serve
 ollama pull llama3.2:3b
 ```
+
+### JSON API
+
+Every feature is also reachable at `/api/v1/*` (ingest, process, ask, briefings, compliance, entities,
+actions, search) for scripts and external callers — generate a key in Settings, then:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/ingest -H "Authorization: Bearer lexi_..." \
+     -F "documents=@contract.pdf"
+curl -X POST http://localhost:8000/api/v1/process -H "Authorization: Bearer lexi_..."
+curl -X POST http://localhost:8000/api/v1/ask -H "Authorization: Bearer lexi_..." \
+     -H "Content-Type: application/json" -d '{"question": "What is the notice period?"}'
+```
+
+An API key gives one persistent knowledge base per account (no cookie jar needed, unlike the
+browser UI's per-tab sessions) and is exempt from CSRF, since it isn't cookie-based.
 
 ---
 

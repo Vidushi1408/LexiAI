@@ -16,6 +16,22 @@ jobs:
   test:
     name: Lint, test, eval gate
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lexi
+          POSTGRES_PASSWORD: lexi
+          POSTGRES_DB: lexi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lexi -d lexi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://lexi:lexi@localhost:5432/lexi
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -29,7 +45,7 @@ jobs:
           python -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt', 'punkt_tab')]"
       - name: Lint
         run: ruff check .
-      - name: Unit tests
+      - name: Unit tests (auth/audit/session-state tests run against the real Postgres service above)
         run: pytest -q
       - name: Retrieval quality gate (BM25-only, no model download)
         run: python eval/run_eval.py --no-vectors --min-recall5 0.85

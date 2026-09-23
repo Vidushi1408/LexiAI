@@ -4,6 +4,11 @@ gunicorn>=22.0.0
 markdown>=3.6
 nh3>=0.2.17
 
+# Persistence (users, audit log, per-session knowledge-base state) — Postgres in production,
+# falls back to a local SQLite file with zero setup for development; see config.py.
+SQLAlchemy>=2.0.30
+psycopg[binary]>=3.1.0
+
 # NLP
 nltk>=3.8.1
 
