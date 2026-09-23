@@ -25,7 +25,7 @@
 | Layer | Technology |
 |-------|-----------|
 | **UI Framework** | Flask · Jinja2 server-rendered pages (Dark SaaS Professional Theme), served by gunicorn |
-| **NLP Preprocessing** | NLTK · spaCy · Regex |
+| **NLP Preprocessing** | NLTK · Regex |
 | **Text Classification** | PyTorch · ANN · CNN · LSTM |
 | **Sentence Embeddings** | SentenceTransformers (`all-MiniLM-L6-v2`) |
 | **Named Entity Recognition** | BERT (`dbmdz/bert-large-cased-finetuned-conll03-english`) + Lexi Rule Extractors |
@@ -136,7 +136,7 @@ ollama pull llama3.2:3b
 ## 🧑‍💻 Development
 
 ```bash
-make setup      # venv, dependencies, spaCy/NLTK data, pre-commit hooks
+make setup      # venv, dependencies, NLTK data, pre-commit hooks
 make check      # lint + tests (what CI runs)
 make eval       # retrieval / refusal evaluation on the labelled dataset
 make run        # start the app

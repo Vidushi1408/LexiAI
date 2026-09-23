@@ -5,7 +5,6 @@ PY ?= python3
 setup:            ## create venv and install everything
 	$(PY) -m venv venv
 	venv/bin/pip install -r requirements-dev.txt
-	venv/bin/python -m spacy download en_core_web_sm
 	venv/bin/python -c "import nltk; [nltk.download(p) for p in ('punkt','punkt_tab','stopwords','wordnet','omw-1.4','averaged_perceptron_tagger','averaged_perceptron_tagger_eng')]"
 	venv/bin/pre-commit install
 

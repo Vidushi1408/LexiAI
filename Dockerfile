@@ -17,8 +17,7 @@ RUN pip install -r requirements.txt
 # Bake models into the image so it runs fully offline / on-prem.
 # Set --build-arg PRELOAD_NER=1 to also bake in the 1.3 GB BERT NER model.
 ARG PRELOAD_NER=0
-RUN python -m spacy download en_core_web_sm \
- && python -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt','punkt_tab','stopwords','wordnet','omw-1.4','averaged_perceptron_tagger','averaged_perceptron_tagger_eng')]" \
+RUN python -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt','punkt_tab','stopwords','wordnet','omw-1.4','averaged_perceptron_tagger','averaged_perceptron_tagger_eng')]" \
  && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')" \
  && if [ "$PRELOAD_NER" = "1" ]; then python -c "from transformers import pipeline; pipeline('ner', model='dbmdz/bert-large-cased-finetuned-conll03-english')"; fi
 

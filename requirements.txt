@@ -6,7 +6,6 @@ nh3>=0.2.17
 
 # NLP
 nltk>=3.8.1
-spacy>=3.8.16
 
 # Transformers & ML
 transformers>=4.39.0
@@ -32,8 +31,3 @@ python-dotenv>=1.0.0
 pydantic>=2.5.0
 PyYAML>=6.0.3
 requests>=2.31.0
-
-
-
-# One-time model downloads (not pip-installable):
-#   python -m spacy download en_core_web_sm
