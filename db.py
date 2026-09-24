@@ -9,12 +9,15 @@ to stay portable between the two; there is no migration framework yet (Alembic w
 step once the schema needs to change under real data — noted here rather than silently skipped).
 """
 import datetime as dt
+import logging
 import os
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, LargeBinary, String, Text, create_engine
+from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, LargeBinary, String, Text, create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from config import settings
+
+log = logging.getLogger("lexi.db")
 
 
 class Base(DeclarativeBase):
@@ -101,8 +104,31 @@ def new_session():
 
 
 def init_db() -> None:
-    """Create tables that don't exist yet. Safe to call on every app startup."""
-    Base.metadata.create_all(get_engine())
+    """Create tables that don't exist yet, then patch any table that's missing columns a model
+    has gained since it was first created (see the module docstring re: no migration framework).
+    Safe to call on every app startup."""
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
+
+
+def _add_missing_columns(engine) -> None:
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    try:
+        with engine.begin() as conn:
+            for table in Base.metadata.sorted_tables:
+                if table.name not in existing_tables:
+                    continue  # create_all() above just made it, with every column already
+                existing_cols = {c["name"] for c in inspector.get_columns(table.name)}
+                for col in table.columns:
+                    if col.name in existing_cols:
+                        continue
+                    col_type = col.type.compile(dialect=engine.dialect)
+                    conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col_type}'))
+                    log.warning("schema upgrade: added column %s.%s", table.name, col.name)
+    except Exception:
+        log.exception("schema upgrade failed; continuing with the existing schema")
 
 
 def reset_engine_for_tests(url: str | None = None) -> None:
