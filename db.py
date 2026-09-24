@@ -57,6 +57,12 @@ class KBSessionRow(Base):
     compliance_result = Column(JSON, nullable=True)
     entities_result = Column(JSON, nullable=True)
     action_items_result = Column(JSON, nullable=True)
+    # Past runs, newest last, capped at HISTORY_LIMIT (see webapp/state.py) — the fields above
+    # stay as "the latest run" so nothing that reads them needs to change.
+    briefing_history = Column(JSON, nullable=True)
+    compliance_history = Column(JSON, nullable=True)
+    entities_history = Column(JSON, nullable=True)
+    action_items_history = Column(JSON, nullable=True)
     zero_retention = Column(Boolean, default=False)
     last_audited_question = Column(Text, nullable=True)
     qa_confidences = Column(JSON, nullable=True)

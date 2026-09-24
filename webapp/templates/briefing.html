@@ -23,5 +23,17 @@
 {% if state.summary_result %}
 <div class="card prose">{{ state.summary_result | markdown }}</div>
 {% endif %}
+
+{% if past %}
+<h2 class="mt-lg" style="margin-bottom:12px;">📜 Previous Briefings ({{ past|length }})</h2>
+{% for item in past %}
+<details class="card">
+  <summary class="small" style="cursor:pointer;">
+    <strong>{{ item.ts.replace("T", " ").split("+")[0] }} UTC</strong> · {{ item.style.capitalize() }} Briefing
+  </summary>
+  <div class="prose mt-lg">{{ item.text | markdown }}</div>
+</details>
+{% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}

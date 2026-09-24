@@ -329,3 +329,107 @@ def test_api_ask_before_processing_returns_409(client):
     key = _generate_api_key(client)
     r = client.post("/api/v1/ask", headers={"Authorization": f"Bearer {key}"}, json={"question": "anything?"})
     assert r.status_code == 409 and r.get_json()["error"] == "not_processed"
+
+
+# ── history: Briefings / Compliance / Entities / Actions keep past runs ─────
+
+def test_briefing_history_accumulates_and_shows_past_runs(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    with patch("generative.summarizer._call_ollama", return_value="First briefing text."):
+        html = _post(client, "/briefings", {"style": "concise"}, get_path="/briefings").get_data(as_text=True)
+    assert "First briefing text" in html and "Previous Briefings" not in html  # nothing "previous" yet
+
+    with patch("generative.summarizer._call_ollama", return_value="Second briefing text."):
+        html = _post(client, "/briefings", {"style": "detailed"}, get_path="/briefings").get_data(as_text=True)
+    assert "Second briefing text" in html                 # latest, shown as the main result
+    assert "Previous Briefings (1)" in html
+    assert "First briefing text" in html                  # the earlier run, inside history
+    assert "Concise Briefing" in html                      # the earlier run's style is remembered too
+
+    # a page reload (GET) still shows both — history is on persisted state, not request-local
+    html = client.get("/briefings").get_data(as_text=True)
+    assert "Second briefing text" in html and "First briefing text" in html
+
+
+def test_compliance_history_accumulates_and_shows_past_runs(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    with patch("generative.quiz_generator.chat_json", return_value=None):
+        _post(client, "/compliance", {"custom_rules": ""})
+        html = _post(client, "/compliance", {"custom_rules": ""}, get_path="/compliance").get_data(as_text=True)
+
+    assert "Previous Evaluations (1)" in html
+    assert "Standard checklist" in html
+    assert "PASS:" in html and "REVIEW:" in html            # the summary line on the collapsed entry
+
+
+def test_entities_history_accumulates_and_shows_past_runs(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    def _pipeline_v1(chunk):
+        return [{"entity_group": "ORG", "word": "Northwind Analytics Ltd", "score": 0.99}]
+
+    def _pipeline_v2(chunk):
+        return [{"entity_group": "PER", "word": "Maria Lopez", "score": 0.99}]
+
+    with patch("ner.ner_extractor.get_ner_pipeline", return_value=_pipeline_v1):
+        _post(client, "/entities", {})
+    with patch("ner.ner_extractor.get_ner_pipeline", return_value=_pipeline_v2):
+        html = _post(client, "/entities", {}, get_path="/entities").get_data(as_text=True)
+
+    assert "Maria Lopez" in html                            # the latest run's result
+    assert "Previous Extractions (1)" in html
+    assert "Northwind Analytics Ltd" in html                # the earlier run's result, inside history
+
+
+def test_action_items_history_accumulates_and_shows_past_runs(client):
+    from generative.schemas import ActionItem, ActionItemList
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    first = ActionItemList(items=[ActionItem(task="Send the first draft", priority="High", owner="Priya")])
+    second = ActionItemList(items=[ActionItem(task="Review the signed contract", priority="Low", owner="Sam")])
+
+    with patch("generative.action_item_extractor.chat_json", return_value=first):
+        _post(client, "/actions", {})
+    with patch("generative.action_item_extractor.chat_json", return_value=second):
+        html = _post(client, "/actions", {}, get_path="/actions").get_data(as_text=True)
+
+    assert "Review the signed contract" in html
+    assert "Previous Extractions (1)" in html
+    assert "Send the first draft" in html
+
+
+def test_uploading_new_documents_resets_all_four_histories(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+    with patch("generative.summarizer._call_ollama", return_value="A briefing."):
+        _post(client, "/briefings", {"style": "concise"}, get_path="/briefings")
+        _post(client, "/briefings", {"style": "concise"}, get_path="/briefings")
+    assert "Previous Briefings (1)" in client.get("/briefings").get_data(as_text=True)
+
+    # clearing and uploading a fresh document set should not drag the old history along
+    _post(client, "/knowledge-base/clear", {}, get_path="/knowledge-base/")
+    _upload_and_process(client)
+    html = client.get("/briefings").get_data(as_text=True)
+    assert "Previous Briefings" not in html and "A briefing." not in html
+
+
+def test_history_is_capped_at_ten_entries(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+    with patch("generative.summarizer._call_ollama", side_effect=[f"Briefing number {i}." for i in range(11)]):
+        for _ in range(11):
+            _post(client, "/briefings", {"style": "concise"}, get_path="/briefings")
+
+    html = client.get("/briefings").get_data(as_text=True)
+    assert "Briefing number 10" in html                     # the latest (11th call, 0-indexed 10)
+    # the full history list is capped at 10 (HISTORY_LIMIT); one of those 10 is shown as the
+    # current result above, leaving 9 in the "previous" section
+    assert "Previous Briefings (9)" in html
+    assert "Briefing number 0" not in html                  # the very first run fell off the cap
+    assert "Briefing number 1" in html                      # but the next-oldest survived

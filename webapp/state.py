@@ -30,6 +30,8 @@ from config import settings
 from db import KBSessionRow, new_session
 from rag.indexer import Chunk
 
+HISTORY_LIMIT = 10  # oldest entries drop off past this, per feature, per knowledge base
+
 
 @dataclass
 class KBState:
@@ -44,6 +46,13 @@ class KBState:
     compliance_result: list | None = None
     entities_result: dict | None = None
     action_items_result: list | None = None
+    # Past runs for the four "generate and keep the latest" features, oldest first, capped at
+    # HISTORY_LIMIT. The singular fields above stay as "the latest run" (== history[-1] once
+    # append_history has been called) so existing reads of them are unaffected.
+    briefing_history: list = field(default_factory=list)
+    compliance_history: list = field(default_factory=list)
+    entities_history: list = field(default_factory=list)
+    action_items_history: list = field(default_factory=list)
     zero_retention: bool = settings.zero_retention
     last_audited_question: str | None = None
     qa_confidences: list = field(default_factory=list)  # real retrieval confidence per question asked
@@ -54,6 +63,11 @@ class KBState:
         object.__setattr__(self, name, value)
         if name != "_dirty":
             object.__setattr__(self, "_dirty", True)
+
+    def append_history(self, attr: str, entry: dict) -> None:
+        """Add a timestamped run to one of the four history lists, oldest-first, capped."""
+        history = getattr(self, attr)
+        setattr(self, attr, (history + [entry])[-HISTORY_LIMIT:])
 
     def clear_documents(self) -> None:
         self.raw_text = None
@@ -67,6 +81,12 @@ class KBState:
         self.compliance_result = None
         self.entities_result = None
         self.action_items_result = None
+        # A fresh set of documents starts a fresh history — the old runs were about a different
+        # knowledge base and would be misleading shown alongside the new one.
+        self.briefing_history = []
+        self.compliance_history = []
+        self.entities_history = []
+        self.action_items_history = []
         self.last_audited_question = None
         self.qa_confidences = []
         self.flat_ingestion = []
@@ -103,6 +123,8 @@ def _row_to_state(row: KBSessionRow) -> KBState:
         action_items_result=row.action_items_result, zero_retention=bool(row.zero_retention),
         last_audited_question=row.last_audited_question, qa_confidences=row.qa_confidences or [],
         flat_ingestion=row.flat_ingestion or [],
+        briefing_history=row.briefing_history or [], compliance_history=row.compliance_history or [],
+        entities_history=row.entities_history or [], action_items_history=row.action_items_history or [],
     )
 
 
@@ -119,6 +141,8 @@ def _state_fields(state: KBState) -> dict:
         action_items_result=state.action_items_result, zero_retention=state.zero_retention,
         last_audited_question=state.last_audited_question, qa_confidences=state.qa_confidences,
         flat_ingestion=state.flat_ingestion,
+        briefing_history=state.briefing_history, compliance_history=state.compliance_history,
+        entities_history=state.entities_history, action_items_history=state.action_items_history,
     )
 
 

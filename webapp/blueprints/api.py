@@ -13,6 +13,7 @@ separate code path to keep in sync, and the same role rules apply (analyst/admin
 ingest/process/analyse, any signed-in role to /ask and /search).
 """
 import logging
+from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
@@ -27,6 +28,10 @@ from webapp.uploads import FlaskUpload
 
 log = logging.getLogger("lexi.web.api")
 bp = Blueprint("api", __name__, url_prefix="/api/v1")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _require_processed(state):
@@ -140,6 +145,7 @@ def briefing():
 
     from generative.summarizer import summarize_text
     state.summary_result = summarize_text(state.raw_text, style=style, chunks=state.chunks)
+    state.append_history("briefing_history", {"ts": _now(), "style": style, "text": state.summary_result})
     audit_event("executive_briefing", style=style, via="api")
     return jsonify(briefing=state.summary_result)
 
@@ -155,6 +161,8 @@ def compliance():
     from generative.quiz_generator import evaluate_compliance
     sents = (state.pipeline_result or {}).get("sentences", state.raw_text.split("."))
     state.compliance_result = evaluate_compliance(sents, custom_checklist=custom_rules)
+    state.append_history("compliance_history",
+                         {"ts": _now(), "custom": bool(custom_rules.strip()), "results": state.compliance_result})
     audit_event("compliance_check", custom_checklist=bool(custom_rules.strip()), via="api",
                 results={s: sum(i["status"] == s for i in state.compliance_result) for s in ("PASS", "FAIL", "REVIEW")})
     return jsonify(results=state.compliance_result)
@@ -168,6 +176,7 @@ def entities():
         return err
     from ner.ner_extractor import extract_entities
     state.entities_result = extract_entities(state.raw_text)
+    state.append_history("entities_history", {"ts": _now(), "entities": state.entities_result})
     audit_event("entity_extraction", via="api")
     return jsonify(entities=state.entities_result)
 
@@ -180,6 +189,7 @@ def actions():
         return err
     from generative.action_item_extractor import extract_action_items
     state.action_items_result = extract_action_items(state.raw_text)
+    state.append_history("action_items_history", {"ts": _now(), "action_items": state.action_items_result})
     audit_event("action_items", count=len(state.action_items_result), via="api")
     return jsonify(actions=state.action_items_result)
 

@@ -29,5 +29,29 @@
 </div>
 {% endfor %}
 {% endif %}
+
+{% if past %}
+<h2 class="mt-lg" style="margin-bottom:12px;">📜 Previous Evaluations ({{ past|length }})</h2>
+{% for run in past %}
+<details class="card">
+  <summary class="small" style="cursor:pointer;">
+    <strong>{{ run.ts.replace("T", " ").split("+")[0] }} UTC</strong> ·
+    {{ "Custom checklist" if run.custom else "Standard checklist" }} ·
+    {% for s in ("PASS", "FAIL", "REVIEW") %}{{ s }}: {{ run.results|selectattr("status", "equalto", s)|list|length }}{{ " · " if not loop.last }}{% endfor %}
+  </summary>
+  <div class="mt-lg">
+    {% for item in run.results %}
+    <div class="card" style="margin-bottom:8px;">
+      <div class="card-row">
+        <strong>{{ item.requirement }}</strong>
+        {{ m.badge(item.status) }}
+      </div>
+      <p class="small muted">Evidence: &ldquo;{{ item.citation }}&rdquo;</p>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}

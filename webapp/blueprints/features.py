@@ -1,5 +1,7 @@
 # webapp/blueprints/features.py
 """One page per analysis feature: briefing, compliance, entities, Q&A, actions, search, clustering."""
+from datetime import datetime, timezone
+
 from flask import Blueprint, render_template, request
 
 from audit import log as audit
@@ -10,6 +12,24 @@ from webapp.state import get_state
 bp = Blueprint("features", __name__)
 
 
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _entity_categories(e: dict) -> list:
+    """Shared by the current result and every history entry, so both render identically."""
+    return [
+        ("🏢", "Organizations", e.get("ORGANIZATION", [])),
+        ("👤", "People & Execs", e.get("PERSON", [])),
+        ("📍", "Locations", e.get("LOCATION", [])),
+        ("📅", "Dates & Deadlines", e.get("DATES_DEADLINES", [])),
+        ("💰", "Financial Values", e.get("FINANCIAL_VALUES", [])),
+        ("💳", "Payment & Renewals", e.get("PAYMENT_RENEWAL", [])),
+        ("📜", "Obligations", e.get("OBLIGATIONS", [])),
+        ("⚠️", "Risk Clauses", e.get("PENALTY_RISKS", [])),
+    ]
+
+
 @bp.route("/briefings", methods=["GET", "POST"])
 @analyst_required
 def briefing():
@@ -18,8 +38,9 @@ def briefing():
     if request.method == "POST" and state.processed:
         from generative.summarizer import summarize_text
         state.summary_result = summarize_text(state.raw_text, style=style, chunks=state.chunks)
+        state.append_history("briefing_history", {"ts": _now(), "style": style, "text": state.summary_result})
         audit_event("executive_briefing", style=style)
-    return render_template("briefing.html", state=state, style=style)
+    return render_template("briefing.html", state=state, style=style, past=list(reversed(state.briefing_history[:-1])))
 
 
 @bp.route("/compliance", methods=["GET", "POST"])
@@ -31,10 +52,13 @@ def compliance():
         from generative.quiz_generator import evaluate_compliance
         sents = (state.pipeline_result or {}).get("sentences", state.raw_text.split("."))
         state.compliance_result = evaluate_compliance(sents, custom_checklist=custom_rules)
+        state.append_history("compliance_history",
+                             {"ts": _now(), "custom": bool(custom_rules.strip()), "results": state.compliance_result})
         audit_event("compliance_check", custom_checklist=bool(custom_rules.strip()),
                     results={s: sum(i["status"] == s for i in state.compliance_result)
                              for s in ("PASS", "FAIL", "REVIEW")})
-    return render_template("compliance.html", state=state, custom_rules=custom_rules)
+    return render_template("compliance.html", state=state, custom_rules=custom_rules,
+                           past=list(reversed(state.compliance_history[:-1])))
 
 
 @bp.route("/entities", methods=["GET", "POST"])
@@ -44,22 +68,13 @@ def entities():
     if request.method == "POST" and state.processed:
         from ner.ner_extractor import extract_entities
         state.entities_result = extract_entities(state.raw_text)
+        state.append_history("entities_history", {"ts": _now(), "entities": state.entities_result})
         audit_event("entity_extraction")
 
-    categories = []
-    if state.entities_result:
-        e = state.entities_result
-        categories = [
-            ("🏢", "Organizations", e.get("ORGANIZATION", [])),
-            ("👤", "People & Execs", e.get("PERSON", [])),
-            ("📍", "Locations", e.get("LOCATION", [])),
-            ("📅", "Dates & Deadlines", e.get("DATES_DEADLINES", [])),
-            ("💰", "Financial Values", e.get("FINANCIAL_VALUES", [])),
-            ("💳", "Payment & Renewals", e.get("PAYMENT_RENEWAL", [])),
-            ("📜", "Obligations", e.get("OBLIGATIONS", [])),
-            ("⚠️", "Risk Clauses", e.get("PENALTY_RISKS", [])),
-        ]
-    return render_template("entities.html", state=state, categories=categories)
+    categories = _entity_categories(state.entities_result) if state.entities_result else []
+    past = [{"ts": run["ts"], "categories": _entity_categories(run["entities"])}
+            for run in reversed(state.entities_history[:-1])]
+    return render_template("entities.html", state=state, categories=categories, past=past)
 
 
 @bp.route("/qa", methods=["GET", "POST"])
@@ -90,8 +105,9 @@ def actions():
     if request.method == "POST" and state.processed:
         from generative.action_item_extractor import extract_action_items
         state.action_items_result = extract_action_items(state.raw_text)
+        state.append_history("action_items_history", {"ts": _now(), "action_items": state.action_items_result})
         audit_event("action_items", count=len(state.action_items_result))
-    return render_template("actions.html", state=state)
+    return render_template("actions.html", state=state, past=list(reversed(state.action_items_history[:-1])))
 
 
 @bp.route("/search", methods=["GET", "POST"])

@@ -24,5 +24,26 @@
   {% endfor %}
 </div>
 {% endif %}
+
+{% if past %}
+<h2 class="mt-lg" style="margin-bottom:12px;">📜 Previous Extractions ({{ past|length }})</h2>
+{% for run in past %}
+<details class="card">
+  <summary class="small" style="cursor:pointer;">
+    <strong>{{ run.ts.replace("T", " ").split("+")[0] }} UTC</strong>
+  </summary>
+  <div class="grid grid-3 mt-lg">
+    {% for icon, title, items in run.categories %}
+    <div class="card">
+      <strong style="color:var(--accent);">{{ icon }} {{ title }} ({{ items|length }})</strong>
+      {% for it in items[:6] %}
+      <div class="small" style="margin:4px 0;color:var(--text-dim);">• {{ it }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}
