@@ -18,6 +18,18 @@
 </div>
 
 {% if auth_enabled %}
+<h2 style="margin:24px 0 12px;">🔒 Change Password</h2>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="form" value="change_password">
+  <div class="grid grid-3">
+    <div class="field"><label>Current password</label><input type="password" name="current_password" required></div>
+    <div class="field"><label>New password (min 10 characters)</label><input type="password" name="new_password" minlength="10" required></div>
+    <div class="field"><label>Confirm new password</label><input type="password" name="confirm" minlength="10" required></div>
+  </div>
+  <button class="btn btn-primary" type="submit">Change password</button>
+</form>
+
 <h2 style="margin:24px 0 12px;">🔑 API Access</h2>
 <div class="card">
   <p class="small muted">Call the JSON API (<code>/api/v1/*</code>) as yourself from a script, with
@@ -39,10 +51,32 @@
 <h2 style="margin:24px 0 12px;">👥 User Management</h2>
 <div class="card" style="overflow-x:auto;">
   <table>
-    <thead><tr><th>Username</th><th>Role</th></tr></thead>
+    <thead><tr><th>Username</th><th>Role</th><th>Reset password</th><th></th></tr></thead>
     <tbody>
       {% for u in users %}
-      <tr><td>{{ u.username }}</td><td>{{ u.role }}</td></tr>
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.role }}</td>
+        <td>
+          <form method="post" style="display:flex;gap:6px;align-items:center;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="form" value="reset_password">
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <input type="password" name="new_password" placeholder="New password" minlength="10" required style="max-width:160px;">
+            <button class="btn btn-ghost btn-sm" type="submit">Reset</button>
+          </form>
+        </td>
+        <td>
+          {% if u.username != current_user().username %}
+          <form method="post" onsubmit="return confirm('Delete user {{ u.username }}? This cannot be undone.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="form" value="delete_user">
+            <input type="hidden" name="username" value="{{ u.username }}">
+            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>

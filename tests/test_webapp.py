@@ -225,6 +225,72 @@ def test_viewer_role_is_enforced_on_every_analyst_route(client):
     assert r.status_code == 403
 
 
+def test_change_own_password(client):
+    _setup_admin(client)
+    r = _post(client, "/settings", {"form": "change_password", "current_password": "s3cure-passphrase",
+                                    "new_password": "another-long-passphrase", "confirm": "another-long-passphrase"},
+              get_path="/settings")
+    assert r.status_code == 302
+    _logout(client)
+    r = _post(client, "/login", {"username": "admin.one", "password": "another-long-passphrase"}, get_path="/login")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/dashboard")
+
+
+def test_change_password_rejects_wrong_current_password(client):
+    _setup_admin(client)
+    html = _post(client, "/settings", {"form": "change_password", "current_password": "totally-wrong",
+                                       "new_password": "another-long-passphrase", "confirm": "another-long-passphrase"},
+                 get_path="/settings", follow_redirects=True).get_data(as_text=True)
+    assert "incorrect" in html.lower()
+
+
+def test_admin_resets_another_users_password(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    _post(client, "/settings", {"form": "reset_password", "username": "view.er", "new_password": "brand-new-password"},
+          get_path="/settings")
+    _logout(client)
+    r = _post(client, "/login", {"username": "view.er", "password": "brand-new-password"}, get_path="/login")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/dashboard")
+
+
+def test_viewer_cannot_reset_passwords(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    _logout(client)
+    _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
+    r = _post(client, "/settings", {"form": "reset_password", "username": "admin.one", "new_password": "hijacked-password"},
+              get_path="/settings")
+    assert r.status_code == 403
+
+
+def test_admin_deletes_a_user(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    r = _post(client, "/settings", {"form": "delete_user", "username": "view.er"}, get_path="/settings")
+    assert r.status_code == 302
+    _logout(client)
+    r = _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
+    assert b"Invalid username or password" in r.get_data()
+
+
+def test_admin_cannot_delete_own_account_or_the_last_admin(client):
+    _setup_admin(client)
+    html = _post(client, "/settings", {"form": "delete_user", "username": "admin.one"}, get_path="/settings",
+                 follow_redirects=True).get_data(as_text=True)
+    assert "own account" in html.lower()
+    assert client.get("/dashboard").status_code == 200   # still logged in, nothing deleted
+
+
+def test_viewer_cannot_delete_users(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    _logout(client)
+    _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
+    r = _post(client, "/settings", {"form": "delete_user", "username": "admin.one"}, get_path="/settings")
+    assert r.status_code == 403
+
+
 def test_audit_log_is_admin_only_and_exports_csv(client):
     _setup_admin(client)
     _upload_and_process(client)

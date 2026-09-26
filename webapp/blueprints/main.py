@@ -87,6 +87,48 @@ def settings_page():
         return render_template("settings.html", users=auth_users.list_users(), roles=auth_users.ROLES,
                                auth_enabled=settings.auth_enabled, new_api_key=new_key)
 
+    if request.method == "POST" and request.form.get("form") == "change_password":
+        username = current_user()["username"]
+        current_pw, new_pw, confirm = (request.form.get("current_password", ""),
+                                       request.form.get("new_password", ""), request.form.get("confirm", ""))
+        if new_pw != confirm:
+            flash("New passwords do not match.", "error")
+        else:
+            try:
+                auth_users.change_password(username, current_pw, new_pw)
+                audit_event("password_changed", target=username)
+                flash("Password changed.", "success")
+            except ValueError as e:
+                flash(str(e), "error")
+        return redirect(url_for("main.settings_page"))
+
+    if request.method == "POST" and request.form.get("form") == "reset_password":
+        if not auth_roles.is_admin(current_role()):
+            abort(403)
+        target, new_pw = request.form.get("username", ""), request.form.get("new_password", "")
+        try:
+            auth_users.set_password(target.strip().lower(), new_pw)
+            audit_event("password_reset", target=target.strip().lower())
+            flash(f"Password reset for {target.strip().lower()}.", "success")
+        except ValueError as e:
+            flash(str(e), "error")
+        return redirect(url_for("main.settings_page"))
+
+    if request.method == "POST" and request.form.get("form") == "delete_user":
+        if not auth_roles.is_admin(current_role()):
+            abort(403)
+        target = request.form.get("username", "").strip().lower()
+        if target == current_user()["username"]:
+            flash("You can't delete your own account.", "error")
+        else:
+            try:
+                auth_users.delete_user(target)
+                audit_event("user_deleted", target=target)
+                flash(f"User {target} deleted.", "success")
+            except ValueError as e:
+                flash(str(e), "error")
+        return redirect(url_for("main.settings_page"))
+
     users_list = auth_users.list_users() if auth_roles.is_admin(current_role()) else None
     return render_template("settings.html", users=users_list, roles=auth_users.ROLES,
                            auth_enabled=settings.auth_enabled, new_api_key=None)

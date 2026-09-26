@@ -77,6 +77,48 @@ def test_api_key_generation_and_lookup(db_session):
     assert users.authenticate_api_key("not-even-the-right-prefix", session=db_session) is None
 
 
+def test_set_password_resets_without_the_old_one(db_session):
+    users.create_user("bob", "a-long-password", "analyst", session=db_session)
+    users.set_password("bob", "a-new-long-password", session=db_session)
+    assert users.authenticate("bob", "a-long-password", session=db_session)[0] is None
+    assert users.authenticate("bob", "a-new-long-password", session=db_session)[0] is not None
+
+
+def test_set_password_rejects_short_password(db_session):
+    users.create_user("bob", "a-long-password", "analyst", session=db_session)
+    with pytest.raises(ValueError):
+        users.set_password("bob", "short", session=db_session)
+
+
+def test_change_password_requires_current_password(db_session):
+    users.create_user("bob", "a-long-password", "analyst", session=db_session)
+    with pytest.raises(ValueError):
+        users.change_password("bob", "wrong-current-password", "a-new-long-password", session=db_session)
+    users.change_password("bob", "a-long-password", "a-new-long-password", session=db_session)
+    assert users.authenticate("bob", "a-new-long-password", session=db_session)[0] is not None
+
+
+def test_delete_user_removes_them(db_session):
+    users.create_user("bob", "a-long-password", "viewer", session=db_session)
+    users.delete_user("bob", session=db_session)
+    assert db_session.get(db.User, "bob") is None
+    with pytest.raises(ValueError):
+        users.delete_user("bob", session=db_session)
+
+
+def test_delete_user_refuses_to_remove_the_last_admin(db_session):
+    users.create_user("root", "a-long-password", "admin", session=db_session)
+    with pytest.raises(ValueError):
+        users.delete_user("root", session=db_session)
+
+
+def test_delete_user_allows_removing_an_admin_when_another_remains(db_session):
+    users.create_user("root", "a-long-password", "admin", session=db_session)
+    users.create_user("root2", "a-long-password", "admin", session=db_session)
+    users.delete_user("root", session=db_session)   # doesn't raise
+    assert db_session.get(db.User, "root") is None
+
+
 def test_role_permissions():
     pages = ["🏠 Landing Page", "💬 Document Q&A", "✅ Compliance Checker", "🛡️ Audit Log", "⚙️ Settings"]
     assert roles.allowed_pages("viewer", pages) == ["🏠 Landing Page", "💬 Document Q&A"]

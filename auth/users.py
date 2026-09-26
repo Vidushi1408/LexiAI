@@ -79,6 +79,58 @@ def create_user(username: str, password: str, role: str = "analyst", session: Se
             s.close()
 
 
+def set_password(username: str, new_password: str, session: Session | None = None) -> None:
+    """Admin-initiated reset: sets a new password without needing the old one."""
+    if len(new_password) < MIN_PASSWORD_LEN:
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LEN} characters.")
+    s, owns = _session(session)
+    try:
+        user = s.get(User, username)
+        if user is None:
+            raise ValueError("No such user.")
+        user.password_hash = hash_password(new_password)
+        s.commit()
+    finally:
+        if owns:
+            s.close()
+
+
+def change_password(username: str, current_password: str, new_password: str,
+                     session: Session | None = None) -> None:
+    """Self-service: verifies `current_password` before setting `new_password`."""
+    s, owns = _session(session)
+    try:
+        user = s.get(User, username)
+        if user is None or not verify_password(current_password, user.password_hash):
+            raise ValueError("Current password is incorrect.")
+        if len(new_password) < MIN_PASSWORD_LEN:
+            raise ValueError(f"Password must be at least {MIN_PASSWORD_LEN} characters.")
+        user.password_hash = hash_password(new_password)
+        s.commit()
+    finally:
+        if owns:
+            s.close()
+
+
+def delete_user(username: str, session: Session | None = None) -> None:
+    """Raises ValueError if the user doesn't exist or is the last remaining admin."""
+    s, owns = _session(session)
+    try:
+        with _lock:
+            user = s.get(User, username)
+            if user is None:
+                raise ValueError("No such user.")
+            if user.role == "admin":
+                other_admins = s.query(User).filter(User.role == "admin", User.username != username).count()
+                if other_admins == 0:
+                    raise ValueError("Can't delete the last admin account.")
+            s.delete(user)
+            s.commit()
+    finally:
+        if owns:
+            s.close()
+
+
 def authenticate(username: str, password: str, session: Session | None = None) -> tuple[dict | None, str]:
     """Returns (user, message). user is {'username', 'role'} on success, else None."""
     username = username.strip().lower()
