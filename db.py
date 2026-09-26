@@ -5,12 +5,18 @@ users, the audit log, and per-browser-session knowledge-base state.
 
 Runs against Postgres in production (docker-compose and CI both provide one) or a local SQLite
 file for zero-setup development — see config.settings.database_url. The schema is simple enough
-to stay portable between the two; there is no migration framework yet (Alembic would be the next
-step once the schema needs to change under real data — noted here rather than silently skipped).
+to stay portable between the two.
+
+Schema changes go through Alembic (see alembic/versions/ — `alembic revision --autogenerate -m
+"..."` after editing a model below, then `alembic upgrade head`). init_db() also still runs
+create_all() plus a column-patching safety net for anyone who starts the app without running
+migrations by hand (simple additive columns only); on a database it finds with no alembic_version
+table, it stamps "head" rather than replaying migrations against tables that already exist.
 """
 import datetime as dt
 import logging
 import os
+from pathlib import Path
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, LargeBinary, String, Text, create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
@@ -104,12 +110,13 @@ def new_session():
 
 
 def init_db() -> None:
-    """Create tables that don't exist yet, then patch any table that's missing columns a model
-    has gained since it was first created (see the module docstring re: no migration framework).
-    Safe to call on every app startup."""
+    """Create tables that don't exist yet, patch any table that's missing columns a model has
+    gained since it was first created, and make sure Alembic knows this database is current
+    (see the module docstring). Safe to call on every app startup."""
     engine = get_engine()
     Base.metadata.create_all(engine)
     _add_missing_columns(engine)
+    _ensure_alembic_stamped(engine)
 
 
 def _add_missing_columns(engine) -> None:
@@ -129,6 +136,23 @@ def _add_missing_columns(engine) -> None:
                     log.warning("schema upgrade: added column %s.%s", table.name, col.name)
     except Exception:
         log.exception("schema upgrade failed; continuing with the existing schema")
+
+
+def _ensure_alembic_stamped(engine) -> None:
+    """A database create_all()/the column-patcher just brought up to date has no alembic_version
+    row, so a later `alembic upgrade head` would try to replay "create table" against tables that
+    already exist. Stamp it at head instead — safe because the two are kept in sync above."""
+    if "alembic_version" in inspect(engine).get_table_names():
+        return
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        cfg = Config(str(Path(__file__).resolve().parent / "alembic.ini"))
+        cfg.set_main_option("sqlalchemy.url", str(engine.url))
+        command.stamp(cfg, "head")
+    except Exception:
+        log.exception("could not stamp alembic_version; run `alembic stamp head` manually")
 
 
 def reset_engine_for_tests(url: str | None = None) -> None:

@@ -1,6 +1,9 @@
 # tests/test_db_migration.py
 """init_db() must upgrade an existing table in place when a model gains a new column, without
-touching the rows already there — this is the only safety net until Alembic lands (see db.py)."""
+touching the rows already there — a safety net for anyone who starts the app without running
+`alembic upgrade head` by hand (see db.py). It must also leave the database stamped at Alembic's
+head revision, so a later real `alembic upgrade head` doesn't try to replay "create table" against
+tables that already exist."""
 import sqlalchemy as sa
 
 import db
@@ -32,5 +35,33 @@ def test_init_db_adds_missing_column_to_existing_table_and_keeps_its_rows(tmp_pa
         assert row.sid == "abc123"
         assert row.file_name == "contract.pdf"
         assert row.briefing_history is None
+
+        with db.get_engine().begin() as conn:
+            stamped = conn.execute(sa.text("SELECT version_num FROM alembic_version")).fetchone()
+        assert stamped is not None
+    finally:
+        db._engine, db._SessionLocal = prior_engine, prior_sessionmaker
+
+
+def test_init_db_stamps_a_fresh_database_at_head(tmp_path):
+    url = f"sqlite:///{tmp_path}/fresh.db"
+    prior_engine, prior_sessionmaker = db._engine, db._SessionLocal
+    db._engine = db._make_engine(url)
+    db._SessionLocal = None
+    try:
+        db.init_db()
+        with db.get_engine().begin() as conn:
+            stamped = conn.execute(sa.text("SELECT version_num FROM alembic_version")).fetchone()
+        assert stamped is not None
+
+        # A real `alembic upgrade head` afterwards must be a no-op, not an error, since the
+        # tables it thinks it needs to create already exist.
+        from alembic import command
+        from alembic.config import Config
+        from pathlib import Path
+
+        cfg = Config(str(Path(db.__file__).resolve().parent / "alembic.ini"))
+        cfg.set_main_option("sqlalchemy.url", url)
+        command.upgrade(cfg, "head")
     finally:
         db._engine, db._SessionLocal = prior_engine, prior_sessionmaker
