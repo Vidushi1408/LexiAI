@@ -74,6 +74,8 @@ class KBSessionRow(Base):
     compliance_history = Column(JSON, nullable=True)
     entities_history = Column(JSON, nullable=True)
     action_items_history = Column(JSON, nullable=True)
+    qa_history = Column(JSON, nullable=True)
+    search_history = Column(JSON, nullable=True)
     zero_retention = Column(Boolean, default=False)
     last_audited_question = Column(Text, nullable=True)
     qa_confidences = Column(JSON, nullable=True)
@@ -141,18 +143,27 @@ def _add_missing_columns(engine) -> None:
 
 
 def _ensure_alembic_stamped(engine) -> None:
-    """A database create_all()/the column-patcher just brought up to date has no alembic_version
-    row, so a later `alembic upgrade head` would try to replay "create table" against tables that
-    already exist. Stamp it at head instead — safe because the two are kept in sync above."""
-    if "alembic_version" in inspect(engine).get_table_names():
-        return
+    """create_all()/the column-patcher above just brought this database's columns in line with the
+    current models, so Alembic's own bookkeeping should always say "head" too — otherwise a later
+    real `alembic upgrade head` would try to replay a migration whose column already exists (e.g.
+    on a database stamped by an older version of this function, before a migration was added)."""
     try:
         from alembic import command
         from alembic.config import Config
+        from alembic.script import ScriptDirectory
 
         cfg = Config(str(Path(__file__).resolve().parent / "alembic.ini"))
         cfg.set_main_option("sqlalchemy.url", str(engine.url))
-        command.stamp(cfg, "head")
+        head = ScriptDirectory.from_config(cfg).get_current_head()
+
+        current = None
+        if "alembic_version" in inspect(engine).get_table_names():
+            with engine.connect() as conn:
+                row = conn.execute(text("SELECT version_num FROM alembic_version")).fetchone()
+                current = row[0] if row else None
+
+        if current != head:
+            command.stamp(cfg, "head")
     except Exception:
         log.exception("could not stamp alembic_version; run `alembic stamp head` manually")
 

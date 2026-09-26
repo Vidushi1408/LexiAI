@@ -88,6 +88,10 @@ def qa():
             from rag.agent import run_agent
             result = run_agent(question, state.faiss_index, state.chunks)
             state.qa_confidences.append(result.get("confidence", 0.0))
+            state.append_history("qa_history", {"ts": _now(), "question": question, "answer": result["answer"],
+                                                 "answerable": result["answerable"],
+                                                 "confidence": result.get("confidence", 0.0),
+                                                 "citations": result.get("citations", [])})
             if state.last_audited_question != question:
                 state.last_audited_question = question
                 audit_event("question_asked",
@@ -95,7 +99,8 @@ def qa():
                             answerable=result["answerable"],
                             sources=[{"doc": c["doc"], "location": c["location"], "cited": c.get("cited", False)}
                                      for c in result.get("citations", [])])
-    return render_template("qa.html", state=state, question=question, result=result)
+    return render_template("qa.html", state=state, question=question, result=result,
+                           past=list(reversed(state.qa_history[:-1])))
 
 
 @bp.route("/actions", methods=["GET", "POST"])
@@ -110,6 +115,10 @@ def actions():
     return render_template("actions.html", state=state, past=list(reversed(state.action_items_history[:-1])))
 
 
+def _serialize_search_results(results: list) -> list[dict]:
+    return [{"text": str(chunk), "score": score, **meta} for chunk, score, meta in results]
+
+
 @bp.route("/search", methods=["GET", "POST"])
 @login_required
 def search():
@@ -120,7 +129,10 @@ def search():
         if query:
             from rag.retriever import hybrid_search
             results = hybrid_search(query, state.faiss_index, state.chunks, top_k=5)
-    return render_template("search.html", state=state, query=query, results=results)
+            state.append_history("search_history",
+                                 {"ts": _now(), "query": query, "results": _serialize_search_results(results)})
+    return render_template("search.html", state=state, query=query, results=results,
+                           past=list(reversed(state.search_history[:-1])))
 
 
 @bp.route("/clustering", methods=["GET", "POST"])

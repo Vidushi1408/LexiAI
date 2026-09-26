@@ -124,6 +124,10 @@ def ask():
 
     from rag.agent import run_agent
     result = run_agent(question, state.faiss_index, state.chunks)
+    state.append_history("qa_history", {"ts": _now(), "question": question, "answer": result["answer"],
+                                        "answerable": result["answerable"],
+                                        "confidence": result.get("confidence", 0.0),
+                                        "citations": result.get("citations", [])})
     if state.last_audited_question != question:
         state.last_audited_question = question
         audit_event("question_asked",
@@ -205,7 +209,9 @@ def search():
         return jsonify(error="missing_query", message="Provide 'query' (JSON body or form field)."), 400
     from rag.retriever import hybrid_search
     results = hybrid_search(query, state.faiss_index, state.chunks, top_k=5)
-    return jsonify(results=[{"text": str(chunk), "score": score, **meta} for chunk, score, meta in results])
+    serialized = [{"text": str(chunk), "score": score, **meta} for chunk, score, meta in results]
+    state.append_history("search_history", {"ts": _now(), "query": query, "results": serialized})
+    return jsonify(results=serialized)
 
 
 @bp.get("/whoami")

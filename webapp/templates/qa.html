@@ -32,5 +32,29 @@
 </div>
 {% endif %}
 {% endif %}
+
+{% if past %}
+<h2 class="mt-lg" style="margin-bottom:12px;">📜 Previous Questions ({{ past|length }})</h2>
+{% for run in past %}
+<details class="card">
+  <summary class="small" style="cursor:pointer;">
+    <strong>{{ run.ts.replace("T", " ").split("+")[0] }} UTC</strong> · {{ run.question }}
+  </summary>
+  <div class="mt-lg prose">{{ run.answer | markdown }}</div>
+  {% if run.citations %}
+  <div class="card" style="margin-top:10px;">
+    <strong>📎 Sources ({{ run.citations|length }})</strong>
+    {% for src in run.citations %}
+    <div class="card" style="margin-top:10px;">
+      <div class="small"><strong>[{{ src.n }}] {{ src.doc }} — {{ src.location }}</strong> · relevance {{ "%.2f"|format(src.score) }} ·
+        {{ "✅ cited" if src.cited else "not cited" }}</div>
+      <p class="small muted" style="margin-top:6px;">{{ src.text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</details>
+{% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}

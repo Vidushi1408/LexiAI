@@ -53,6 +53,8 @@ class KBState:
     compliance_history: list = field(default_factory=list)
     entities_history: list = field(default_factory=list)
     action_items_history: list = field(default_factory=list)
+    qa_history: list = field(default_factory=list)
+    search_history: list = field(default_factory=list)
     zero_retention: bool = settings.zero_retention
     last_audited_question: str | None = None
     qa_confidences: list = field(default_factory=list)  # real retrieval confidence per question asked
@@ -87,6 +89,8 @@ class KBState:
         self.compliance_history = []
         self.entities_history = []
         self.action_items_history = []
+        self.qa_history = []
+        self.search_history = []
         self.last_audited_question = None
         self.qa_confidences = []
         self.flat_ingestion = []
@@ -125,6 +129,7 @@ def _row_to_state(row: KBSessionRow) -> KBState:
         flat_ingestion=row.flat_ingestion or [],
         briefing_history=row.briefing_history or [], compliance_history=row.compliance_history or [],
         entities_history=row.entities_history or [], action_items_history=row.action_items_history or [],
+        qa_history=row.qa_history or [], search_history=row.search_history or [],
     )
 
 
@@ -143,6 +148,7 @@ def _state_fields(state: KBState) -> dict:
         flat_ingestion=state.flat_ingestion,
         briefing_history=state.briefing_history, compliance_history=state.compliance_history,
         entities_history=state.entities_history, action_items_history=state.action_items_history,
+        qa_history=state.qa_history, search_history=state.search_history,
     )
 
 

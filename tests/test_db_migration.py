@@ -4,6 +4,8 @@ touching the rows already there — a safety net for anyone who starts the app w
 `alembic upgrade head` by hand (see db.py). It must also leave the database stamped at Alembic's
 head revision, so a later real `alembic upgrade head` doesn't try to replay "create table" against
 tables that already exist."""
+from pathlib import Path
+
 import sqlalchemy as sa
 
 import db
@@ -58,10 +60,42 @@ def test_init_db_stamps_a_fresh_database_at_head(tmp_path):
         # tables it thinks it needs to create already exist.
         from alembic import command
         from alembic.config import Config
-        from pathlib import Path
 
         cfg = Config(str(Path(db.__file__).resolve().parent / "alembic.ini"))
         cfg.set_main_option("sqlalchemy.url", url)
         command.upgrade(cfg, "head")
+    finally:
+        db._engine, db._SessionLocal = prior_engine, prior_sessionmaker
+
+
+def test_init_db_restamps_a_database_left_at_an_older_revision(tmp_path):
+    """Regression: an earlier version of _ensure_alembic_stamped only stamped a database that had
+    no alembic_version table at all, so one stamped before a later migration was added (e.g. by an
+    older deploy of this app) stayed pinned to that old revision forever — even though create_all()
+    and the column-patcher had already brought its columns up to date. init_db() must catch it up
+    to head every time, not just the first time."""
+    from alembic import command
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    url = f"sqlite:///{tmp_path}/stale.db"
+    cfg = Config(str(Path(db.__file__).resolve().parent / "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    script = ScriptDirectory.from_config(cfg)
+    head = script.get_current_head()
+    previous = script.get_revision(head).down_revision
+    assert previous is not None, "this regression test needs at least two migrations to exist"
+
+    prior_engine, prior_sessionmaker = db._engine, db._SessionLocal
+    db._engine = db._make_engine(url)
+    db._SessionLocal = None
+    try:
+        db.init_db()
+        command.stamp(cfg, previous)   # simulate a database stamped before the latest migration existed
+
+        db.init_db()
+        with db.get_engine().begin() as conn:
+            stamped = conn.execute(sa.text("SELECT version_num FROM alembic_version")).fetchone()[0]
+        assert stamped == head
     finally:
         db._engine, db._SessionLocal = prior_engine, prior_sessionmaker

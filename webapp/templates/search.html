@@ -23,5 +23,25 @@
   <p class="small muted">Vector Score: {{ meta.vector_score }} | BM25 Score: {{ meta.bm25_score }} | Matched Keywords: {{ meta.matched_keywords|join(", ") }}</p>
 </div>
 {% endfor %}
+
+{% if past %}
+<h2 class="mt-lg" style="margin-bottom:12px;">📜 Previous Searches ({{ past|length }})</h2>
+{% for run in past %}
+<details class="card">
+  <summary class="small" style="cursor:pointer;">
+    <strong>{{ run.ts.replace("T", " ").split("+")[0] }} UTC</strong> · {{ run.query }} · {{ run.results|length }} result{{ "s" if run.results|length != 1 }}
+  </summary>
+  <div class="mt-lg">
+    {% for r in run.results %}
+    <div class="card" style="margin-bottom:8px;">
+      <strong style="color:var(--accent);">Hybrid Score: {{ r.score }} | Doc: {{ r.doc_name }} | {{ r.location }}</strong>
+      <p class="small" style="margin-top:6px;">{{ r.text }}</p>
+      <p class="small muted">Vector Score: {{ r.vector_score }} | BM25 Score: {{ r.bm25_score }} | Matched Keywords: {{ r.matched_keywords|join(", ") }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+{% endif %}
 {% endif %}
 {% endblock %}

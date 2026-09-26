@@ -470,7 +470,39 @@ def test_action_items_history_accumulates_and_shows_past_runs(client):
     assert "Send the first draft" in html
 
 
-def test_uploading_new_documents_resets_all_four_histories(client):
+def test_qa_history_accumulates_and_shows_past_runs(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    with patch("rag.agent._call_ollama", return_value="The fee is due within thirty days [1]."):
+        _post(client, "/qa", {"question": "When is payment due?"})
+    with patch("rag.agent._call_ollama", return_value="Ninety days notice is required [1]."):
+        html = _post(client, "/qa", {"question": "What is the notice period?"}, get_path="/qa").get_data(as_text=True)
+
+    assert "Ninety days notice" in html                     # latest, shown as the main result
+    assert "Previous Questions (1)" in html
+    assert "When is payment due?" in html                   # the earlier question, inside history
+    assert "thirty days" in html                            # the earlier answer, inside history
+
+    html = client.get("/qa").get_data(as_text=True)         # persisted across a GET reload
+    assert "Previous Questions (1)" in html
+
+
+def test_search_history_accumulates_and_shows_past_runs(client):
+    _setup_admin(client)
+    _upload_and_process(client)
+
+    _post(client, "/search", {"query": "termination"})
+    html = _post(client, "/search", {"query": "invoice"}, get_path="/search").get_data(as_text=True)
+
+    assert "Previous Searches (1)" in html
+    assert "termination" in html
+
+    html = client.get("/search").get_data(as_text=True)
+    assert "Previous Searches (1)" in html
+
+
+def test_uploading_new_documents_resets_all_histories(client):
     _setup_admin(client)
     _upload_and_process(client)
     with patch("generative.summarizer._call_ollama", return_value="A briefing."):
@@ -478,11 +510,22 @@ def test_uploading_new_documents_resets_all_four_histories(client):
         _post(client, "/briefings", {"style": "concise"}, get_path="/briefings")
     assert "Previous Briefings (1)" in client.get("/briefings").get_data(as_text=True)
 
+    with patch("rag.agent._call_ollama", return_value="Ninety days [1]."):
+        _post(client, "/qa", {"question": "What is the notice period?"})
+        _post(client, "/qa", {"question": "What is the notice period again?"}, get_path="/qa")
+    assert "Previous Questions (1)" in client.get("/qa").get_data(as_text=True)
+
+    _post(client, "/search", {"query": "termination"})
+    _post(client, "/search", {"query": "invoice"}, get_path="/search")
+    assert "Previous Searches (1)" in client.get("/search").get_data(as_text=True)
+
     # clearing and uploading a fresh document set should not drag the old history along
     _post(client, "/knowledge-base/clear", {}, get_path="/knowledge-base/")
     _upload_and_process(client)
     html = client.get("/briefings").get_data(as_text=True)
     assert "Previous Briefings" not in html and "A briefing." not in html
+    assert "Previous Questions" not in client.get("/qa").get_data(as_text=True)
+    assert "Previous Searches" not in client.get("/search").get_data(as_text=True)
 
 
 def test_history_is_capped_at_ten_entries(client):
