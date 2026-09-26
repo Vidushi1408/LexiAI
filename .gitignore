@@ -15,6 +15,9 @@ __pycache__/
 .pytest_cache/
 rag/saved_index/
 models/embed_cache/
+# All 3 architectures' weights are regenerable via `python -m models.train_all` (comparison run);
+# only the winner it records in best_model.json ships with the app — see models/classifier.py.
+models/saved/*.pt
 data/processed/
 data/audit/
 data/auth/

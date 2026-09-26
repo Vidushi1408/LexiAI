@@ -76,7 +76,7 @@ class ANNClassifier(nn.Module):
 
 
 def train_ann(X_train, y_train, X_val, y_val,
-              epochs: int = 50, lr: float = 0.001) -> tuple:
+              epochs: int = 50, lr: float = 0.001, num_classes: int = 4) -> tuple:
     """
     Trains the ANN model.
 
@@ -85,6 +85,7 @@ def train_ann(X_train, y_train, X_val, y_val,
         X_val,   y_val  : Validation embeddings and labels
         epochs (int)    : Number of training iterations
         lr (float)      : Learning rate (how big each weight update is)
+        num_classes (int): Number of output classes
 
     Returns:
         tuple: (trained_model, train_losses, val_losses)
@@ -101,7 +102,7 @@ def train_ann(X_train, y_train, X_val, y_val,
     train_loader  = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
     # ── Initialize model, loss function, optimizer ────────────────
-    model     = ANNClassifier()
+    model     = ANNClassifier(num_classes=num_classes)
     criterion = nn.CrossEntropyLoss()       # Good for multi-class classification
     optimizer = optim.Adam(model.parameters(), lr=lr)  # Adam: adaptive learning rate
 
@@ -151,9 +152,9 @@ def save_model(model, path: str = "models/saved/ann_model.pt"):
     print(f"[ANN] Model saved to {path}")
 
 
-def load_model(path: str = "models/saved/ann_model.pt") -> ANNClassifier:
+def load_model(path: str = "models/saved/ann_model.pt", num_classes: int = 4) -> ANNClassifier:
     """Loads saved model weights from disk."""
-    model = ANNClassifier()
+    model = ANNClassifier(num_classes=num_classes)
     model.load_state_dict(torch.load(path))
     model.eval()
     print(f"[ANN] Model loaded from {path}")

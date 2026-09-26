@@ -1,0 +1,14 @@
+{
+  "architecture": "ann",
+  "f1": 0.8414560350044222,
+  "num_classes": 7,
+  "labels": [
+    "Risk",
+    "Decision",
+    "Action Item",
+    "Deadline",
+    "Financial",
+    "Compliance",
+    "Obligation"
+  ]
+}

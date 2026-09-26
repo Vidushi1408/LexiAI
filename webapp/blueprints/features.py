@@ -135,13 +135,26 @@ def search():
                            past=list(reversed(state.search_history[:-1])))
 
 
+_FALLBACK_TAGS = ["Risk", "Decision", "Action Item", "Deadline", "Financial", "Compliance", "Obligation"]
+
+
 @bp.route("/clustering", methods=["GET", "POST"])
 @analyst_required
 def clustering():
     state = get_state()
-    tags = ["Risk", "Decision", "Action Item", "Deadline", "Financial", "Compliance", "Obligation"]
+    from models import classifier
+    model_available = classifier.available()
+    tags = classifier.get_labels() if model_available else _FALLBACK_TAGS
     tag = request.form.get("tag") or request.args.get("tag") or tags[0]
     sentences = (state.pipeline_result or {}).get("sentences", []) if state.processed else []
-    matched = [s for s in sentences if tag.lower() in s.lower() or len(s) > 30][:8]
+
+    if model_available and sentences:
+        predictions = classifier.classify_sentences(sentences)
+        matched = [{"text": s, "confidence": conf} for s, (label, conf) in zip(sentences, predictions)
+                   if label == tag][:8]
+    else:
+        matched = [{"text": s, "confidence": None} for s in sentences
+                   if tag.lower() in s.lower() or len(s) > 30][:8]
+
     return render_template("clustering.html", state=state, tags=tags, tag=tag,
-                           total=len(sentences), matched=matched)
+                           total=len(sentences), matched=matched, model_available=model_available)

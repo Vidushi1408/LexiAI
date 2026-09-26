@@ -397,6 +397,42 @@ def test_api_ask_before_processing_returns_409(client):
     assert r.status_code == 409 and r.get_json()["error"] == "not_processed"
 
 
+# ── clustering / tagging: trained classifier with a keyword-heuristic fallback ──
+
+def test_clustering_uses_trained_model_when_available(client):
+    _setup_admin(client)
+
+    sentences = ["Payment is due within thirty days.", "The vendor shall indemnify the client.",
+                 "This is unrelated filler text."]
+    with patch("preprocessing.pipeline.run_preprocessing_pipeline",
+               return_value={"sentences": sentences, "word_count": 10}):
+        _upload_and_process(client)
+
+    predictions = [("Financial", 0.91), ("Obligation", 0.72), ("Risk", 0.30)]
+    with patch("models.classifier.available", return_value=True), \
+         patch("models.classifier.get_labels", return_value=["Risk", "Financial", "Obligation"]), \
+         patch("models.classifier.classify_sentences", return_value=predictions):
+        html = _post(client, "/clustering", {"tag": "Financial"}, get_path="/clustering").get_data(as_text=True)
+
+    assert "Payment is due within thirty days." in html
+    assert "91% confidence" in html
+    assert "The vendor shall indemnify the client." not in html   # tagged Obligation, filtered out
+    assert "No trained tagging model found" not in html
+
+
+def test_clustering_falls_back_to_keyword_heuristic_without_a_model(client):
+    _setup_admin(client)
+    with patch("preprocessing.pipeline.run_preprocessing_pipeline",
+               return_value={"sentences": ["A short risk note."], "word_count": 5}):
+        _upload_and_process(client)
+
+    with patch("models.classifier.available", return_value=False):
+        html = _post(client, "/clustering", {"tag": "Risk"}, get_path="/clustering").get_data(as_text=True)
+
+    assert "No trained tagging model found" in html
+    assert "A short risk note." in html   # matched via the "tag substring OR long sentence" heuristic
+
+
 # ── history: Briefings / Compliance / Entities / Actions keep past runs ─────
 
 def test_briefing_history_accumulates_and_shows_past_runs(client):

@@ -75,7 +75,7 @@ class CNNClassifier(nn.Module):
 
 
 def train_cnn(X_train, y_train, X_val, y_val,
-              epochs: int = 50, lr: float = 0.001) -> tuple:
+              epochs: int = 50, lr: float = 0.001, num_classes: int = 4) -> tuple:
     """Trains the CNN model — same structure as ANN trainer."""
 
     X_train_t = torch.FloatTensor(X_train)
@@ -88,7 +88,7 @@ def train_cnn(X_train, y_train, X_val, y_val,
         batch_size=16, shuffle=True
     )
 
-    model     = CNNClassifier()
+    model     = CNNClassifier(num_classes=num_classes)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -122,3 +122,20 @@ def train_cnn(X_train, y_train, X_val, y_val,
 
     print("[CNN] Training complete! ✅")
     return model, train_losses, val_losses
+
+
+def save_model(model, path: str = "models/saved/cnn_model.pt"):
+    """Saves trained model weights to disk."""
+    import os
+    os.makedirs("models/saved", exist_ok=True)
+    torch.save(model.state_dict(), path)
+    print(f"[CNN] Model saved to {path}")
+
+
+def load_model(path: str = "models/saved/cnn_model.pt", num_classes: int = 4) -> CNNClassifier:
+    """Loads saved model weights from disk."""
+    model = CNNClassifier(num_classes=num_classes)
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    print(f"[CNN] Model loaded from {path}")
+    return model

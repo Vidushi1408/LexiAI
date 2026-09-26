@@ -2,11 +2,17 @@
 {% import "_macros.html" as m %}
 {% block title %}Document Clustering &amp; Tagging{% endblock %}
 {% block content %}
-{{ m.page_header("📁", "Document Clustering & Content Tagging", "Classify and tag sentence provisions into Risk, Decision, Action Item, Deadline, and Financial categories") }}
+{{ m.page_header("📁", "Document Clustering & Content Tagging", "Classify and tag sentence provisions into Risk, Decision, Action Item, Deadline, Financial, Compliance and Obligation categories") }}
 
 {% if not state.processed %}
   {{ m.empty_state("Please upload and process documents first.") }}
 {% else %}
+{% if not model_available %}
+<div class="flash flash-warning" style="margin-bottom:16px;">
+  No trained tagging model found — showing keyword-matched results instead. Run
+  <code>python -m models.train_all</code> to train one.
+</div>
+{% endif %}
 <p>Classified <strong>{{ total }}</strong> sentences into operational clusters.</p>
 <form method="post" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -19,9 +25,12 @@
   <noscript><button class="btn btn-primary" type="submit">Filter</button></noscript>
 </form>
 
-{% for s in matched %}
+{% for item in matched %}
 <div class="card" style="padding:12px 16px;">
-  <span style="color:var(--accent);font-weight:700;">[{{ tag }}]</span> {{ s }}
+  <span style="color:var(--accent);font-weight:700;">[{{ tag }}]</span> {{ item.text }}
+  {% if item.confidence is not none %}
+  <span class="small muted" style="float:right;">{{ "%.0f"|format(item.confidence * 100) }}% confidence</span>
+  {% endif %}
 </div>
 {% endfor %}
 {% endif %}

@@ -32,7 +32,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score,
     recall_score, f1_score, classification_report
 )
-from models.data_prep import ID_TO_LABEL
+from models.training_data import ID_TO_LABEL
 
 
 def get_predictions(model, X_test: np.ndarray) -> np.ndarray:
@@ -88,7 +88,7 @@ def evaluate_model(model, X_test: np.ndarray,
     print(f"{'='*50}")
 
     # Detailed per-class report
-    label_names = [ID_TO_LABEL[i] for i in range(4)]
+    label_names = [ID_TO_LABEL[i] for i in range(len(ID_TO_LABEL))]
     print("\nPer-class breakdown:\n")
     print(classification_report(y_test, preds, target_names=label_names, zero_division=0))
 
