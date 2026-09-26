@@ -291,6 +291,92 @@ def test_viewer_cannot_delete_users(client):
     assert r.status_code == 403
 
 
+# ── billing: plans, checkout, portal, webhook, seat-limit gate ─────────────
+
+def test_billing_page_shows_free_plan_and_seat_usage(client):
+    _setup_admin(client)
+    html = client.get("/billing").get_data(as_text=True)
+    assert "Current plan:</strong> Free" in html
+    assert "Seats:</strong> 1 / 3" in html
+
+
+def test_billing_checkout_requires_admin(client):
+    _setup_admin(client)
+    _post(client, "/settings", {"form": "add_user", "username": "view.er", "role": "viewer", "password": "viewer-pass-123"})
+    _logout(client)
+    _post(client, "/login", {"username": "view.er", "password": "viewer-pass-123"}, get_path="/login")
+    r = _post(client, "/billing/checkout", {"plan": "pro"}, get_path="/billing")
+    assert r.status_code == 403
+
+
+def test_billing_checkout_rejects_a_plan_with_no_price_configured(client):
+    _setup_admin(client)
+    r = _post(client, "/billing/checkout", {"plan": "pro"}, get_path="/billing")
+    assert r.status_code == 302
+    html = client.get("/billing").get_data(as_text=True)
+    assert "isn&#39;t available for checkout" in html or "isn't available for checkout" in html
+
+
+def test_billing_checkout_redirects_to_stripe_when_configured(client):
+    _setup_admin(client)
+    with patch("webapp.blueprints.main.is_purchasable", return_value=True), \
+         patch("billing.stripe_client.create_checkout_session", return_value="https://checkout.stripe.com/test-session"):
+        r = _post(client, "/billing/checkout", {"plan": "pro"}, get_path="/billing")
+    assert r.status_code == 302
+    assert r.headers["Location"] == "https://checkout.stripe.com/test-session"
+
+
+def test_billing_portal_requires_a_stripe_customer(client):
+    _setup_admin(client)
+    r = _post(client, "/billing/portal", {}, get_path="/billing")
+    assert r.status_code == 302
+    html = client.get("/billing").get_data(as_text=True)
+    assert "subscribe to a plan first" in html
+
+
+def test_billing_portal_redirects_when_a_stripe_customer_exists(client):
+    _setup_admin(client)
+    from billing import subscription
+    subscription.set_plan("pro", stripe_customer_id="cus_test123")
+    with patch("billing.stripe_client.create_portal_session", return_value="https://billing.stripe.com/test-portal"):
+        r = _post(client, "/billing/portal", {}, get_path="/billing")
+    assert r.status_code == 302
+    assert r.headers["Location"] == "https://billing.stripe.com/test-portal"
+
+
+def test_stripe_webhook_updates_the_subscription(client):
+    with patch("billing.stripe_client.handle_webhook_event") as mock_handle:
+        r = client.post("/webhooks/stripe", data=b"{}", headers={"Stripe-Signature": "t=1,v1=fake"})
+    assert r.status_code == 200
+    mock_handle.assert_called_once()
+
+
+def test_stripe_webhook_bad_signature_returns_400(client):
+    with patch("billing.stripe_client.handle_webhook_event", side_effect=ValueError("bad signature")):
+        r = client.post("/webhooks/stripe", data=b"{}", headers={"Stripe-Signature": "bad"})
+    assert r.status_code == 400
+
+
+def test_stripe_webhook_needs_no_csrf_token(client):
+    """A real request from Stripe's servers has no session cookie or CSRF token at all."""
+    with patch("billing.stripe_client.handle_webhook_event"):
+        r = client.post("/webhooks/stripe", data=b"{}")
+    assert r.status_code == 200
+
+
+def test_seat_limit_blocks_add_user_once_the_free_plan_is_full(client):
+    _setup_admin(client)   # 1 seat used
+    _post(client, "/settings", {"form": "add_user", "username": "usr1", "role": "viewer", "password": "a-long-password"})
+    _post(client, "/settings", {"form": "add_user", "username": "usr2", "role": "viewer", "password": "a-long-password"})
+    # Free plan's limit is 3 seats; admin.one + usr1 + usr2 already fills it.
+    html = _post(client, "/settings", {"form": "add_user", "username": "usr3", "role": "viewer", "password": "a-long-password"},
+                get_path="/settings", follow_redirects=True).get_data(as_text=True)
+    assert "seat limit" in html.lower()
+
+    from auth import users as auth_users
+    assert "usr3" not in [u["username"] for u in auth_users.list_users()]
+
+
 def test_audit_log_is_admin_only_and_exports_csv(client):
     _setup_admin(client)
     _upload_and_process(client)

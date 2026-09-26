@@ -1,16 +1,20 @@
 # webapp/blueprints/main.py
 """Landing page, dashboard, billing, audit log and settings/user management."""
 import json
+import logging
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 
 from audit import log as audit
 from auth import roles as auth_roles
 from auth import users as auth_users
+from billing import subscription as billing_subscription
+from billing.plans import PLAN_ORDER, PLANS, is_purchasable
 from config import settings
 from webapp.security import audit_event, current_role, current_user, login_required, role_required
 from webapp.state import get_state
 
+log = logging.getLogger("lexi.web.billing")
 bp = Blueprint("main", __name__)
 
 
@@ -42,8 +46,66 @@ def dashboard():
 
 
 @bp.route("/billing")
+@login_required
 def billing():
-    return render_template("billing.html")
+    sub = billing_subscription.get_subscription()
+    return render_template(
+        "billing.html", plans=PLANS, plan_order=PLAN_ORDER, subscription=sub,
+        seats_used=billing_subscription.seats_used(), stripe_configured=bool(settings.stripe_secret_key))
+
+
+@bp.route("/billing/checkout", methods=["POST"])
+@role_required("admin")
+def billing_checkout():
+    plan = request.form.get("plan", "")
+    if not is_purchasable(plan):
+        flash("That plan isn't available for checkout right now.", "error")
+        return redirect(url_for("main.billing"))
+
+    from billing.stripe_client import create_checkout_session
+    try:
+        url = create_checkout_session(
+            plan, success_url=url_for("main.billing", checkout="success", _external=True),
+            cancel_url=url_for("main.billing", checkout="cancelled", _external=True))
+    except Exception:
+        log.exception("Stripe checkout session creation failed")
+        flash("Couldn't start checkout — please try again shortly.", "error")
+        return redirect(url_for("main.billing"))
+
+    audit_event("billing_checkout_started", plan=plan)
+    return redirect(url)
+
+
+@bp.route("/billing/portal", methods=["POST"])
+@role_required("admin")
+def billing_portal():
+    from billing.stripe_client import create_portal_session
+    try:
+        url = create_portal_session(return_url=url_for("main.billing", _external=True))
+    except ValueError as e:
+        flash(str(e), "error")
+        return redirect(url_for("main.billing"))
+    except Exception:
+        log.exception("Stripe portal session creation failed")
+        flash("Couldn't open the billing portal — please try again shortly.", "error")
+        return redirect(url_for("main.billing"))
+
+    audit_event("billing_portal_opened")
+    return redirect(url)
+
+
+@bp.route("/webhooks/stripe", methods=["POST"])
+def stripe_webhook():
+    """No auth decorator: this is called by Stripe's servers, not a signed-in user. Verified by
+    its Stripe-Signature header instead (see billing/stripe_client.py and webapp/security.py's
+    CSRF exemption for this exact path)."""
+    from billing.stripe_client import handle_webhook_event
+    try:
+        handle_webhook_event(request.get_data(), request.headers.get("Stripe-Signature", ""))
+    except Exception:
+        log.exception("Stripe webhook processing failed")
+        return Response(status=400)
+    return Response(status=200)
 
 
 @bp.route("/audit")
@@ -70,6 +132,11 @@ def settings_page():
     if request.method == "POST" and request.form.get("form") == "add_user":
         if not auth_roles.is_admin(current_role()):
             abort(403)
+        if not billing_subscription.can_add_user():
+            plan = billing_subscription.get_subscription()["plan"]
+            flash(f"You've reached the {PLANS[plan]['name']} plan's seat limit. "
+                  f"Upgrade in Billing to add more users.", "error")
+            return redirect(url_for("main.settings_page"))
         nu, nr, npw = request.form.get("username", ""), request.form.get("role", ""), request.form.get("password", "")
         try:
             auth_users.create_user(nu, npw, nr)

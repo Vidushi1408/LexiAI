@@ -3,6 +3,7 @@ Flask>=3.0.0
 gunicorn>=22.0.0
 markdown>=3.6
 nh3>=0.2.17
+stripe>=10.0.0
 
 # Persistence (users, audit log, per-session knowledge-base state) — Postgres in production,
 # falls back to a local SQLite file with zero setup for development; see config.py.

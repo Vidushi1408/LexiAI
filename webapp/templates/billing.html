@@ -4,26 +4,54 @@
 {% block content %}
 {{ m.page_header("💳", "Billing & Subscription Plans") }}
 
+{% if request.args.get("checkout") == "success" %}
+<div class="flash flash-success" style="margin-bottom:16px;">Subscription updated — thanks!</div>
+{% elif request.args.get("checkout") == "cancelled" %}
+<div class="flash flash-warning" style="margin-bottom:16px;">Checkout cancelled — your plan hasn't changed.</div>
+{% endif %}
+
+{% if not stripe_configured %}
+<div class="flash flash-warning" style="margin-bottom:16px;">
+  Billing isn't configured on this deployment yet — plans are shown for reference only.
+  {% if is_admin() %}Set STRIPE_SECRET_KEY, STRIPE_PRICE_PRO and STRIPE_PRICE_ENTERPRISE to enable checkout.{% endif %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:20px;">
+  <strong>Current plan:</strong> {{ plans[subscription.plan].name }}
+  <span class="small muted">({{ subscription.status }})</span>
+  · <strong>Seats:</strong> {{ seats_used }}{% if plans[subscription.plan].seat_limit %} / {{ plans[subscription.plan].seat_limit }}{% else %} (unlimited){% endif %}
+  {% if is_admin() and subscription.stripe_customer_id %}
+  <form method="post" action="{{ url_for('main.billing_portal') }}" style="display:inline;margin-left:12px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-ghost btn-sm" type="submit">Manage billing</button>
+  </form>
+  {% endif %}
+</div>
+
 <div class="grid grid-4">
-  <div class="pricing-card">
-    <div class="pricing-tier" style="color:var(--text-mute);">Free</div>
-    <div class="pricing-price">₹0</div>
-    <p class="small muted">3 documents/mo<br>10 queries/day<br>Basic Briefings</p>
+  {% for key in plan_order %}
+  {% set plan = plans[key] %}
+  <div class="pricing-card {{ 'featured' if key == 'pro' }}">
+    <div class="pricing-tier" style="color:{{ 'var(--accent)' if key == 'pro' else ('#a855f7' if key == 'enterprise' else 'var(--text-mute)') }};">{{ plan.name }}</div>
+    <div class="pricing-price">{{ plan.price_display }}</div>
+    <p class="small{{ '' if key == 'pro' else ' muted' }}">
+      {% for f in plan.features %}{{ f }}<br>{% endfor %}
+    </p>
+    {% if subscription.plan == key %}
+    <span class="badge badge-pass">Current Plan</span>
+    {% elif is_admin() and key != "free" %}
+      {% if stripe_configured and plan.price_id %}
+      <form method="post" action="{{ url_for('main.billing_checkout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="plan" value="{{ key }}">
+        <button class="btn btn-primary btn-block" type="submit">Upgrade to {{ plan.name }}</button>
+      </form>
+      {% else %}
+      <span class="small muted">Contact sales to enable this plan.</span>
+      {% endif %}
+    {% endif %}
   </div>
-  <div class="pricing-card featured">
-    <div class="pricing-tier" style="color:var(--accent);">Professional</div>
-    <div class="pricing-price">₹2,999<span>/mo</span></div>
-    <p class="small">Unlimited documents<br>Unlimited queries<br>Executive Briefings &amp; Compliance</p>
-  </div>
-  <div class="pricing-card">
-    <div class="pricing-tier" style="color:#60a5fa;">Team</div>
-    <div class="pricing-price">₹9,999<span>/mo</span></div>
-    <p class="small">10 users<br>Shared Knowledge Base<br>Admin &amp; Audit Logs</p>
-  </div>
-  <div class="pricing-card">
-    <div class="pricing-tier" style="color:#a855f7;">Enterprise</div>
-    <div class="pricing-price">Custom</div>
-    <p class="small">Unlimited users<br>API &amp; On-premise<br>Dedicated SLA &amp; Support</p>
-  </div>
+  {% endfor %}
 </div>
 {% endblock %}

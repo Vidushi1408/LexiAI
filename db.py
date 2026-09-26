@@ -41,6 +41,20 @@ class User(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
 
+class Subscription(Base):
+    """A single row (id=1) — this deployment's plan and Stripe state. There is no multi-tenancy
+    yet (see db.py's module history), so billing is per-deployment, not per-user: any admin can
+    manage it, same as the rest of Settings. See billing/subscription.py."""
+    __tablename__ = "subscription"
+    id = Column(Integer, primary_key=True)
+    plan = Column(String(20), nullable=False, default="free")
+    status = Column(String(20), nullable=False, default="active")
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
+    current_period_end = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+
+
 class AuditEntry(Base):
     __tablename__ = "audit_log"
     seq = Column(Integer, primary_key=True, autoincrement=True)

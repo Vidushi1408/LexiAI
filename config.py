@@ -58,5 +58,14 @@ class Settings:
         "DATABASE_URL",
         "sqlite:///" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "lexi.db"))
 
+    # Stripe billing (billing/) — all optional. Unset, /billing shows plans read-only with an
+    # "ask your admin to configure billing" notice instead of checkout buttons; nothing else
+    # in the app depends on these being set.
+    stripe_secret_key:      str = os.getenv("STRIPE_SECRET_KEY", "")
+    stripe_publishable_key: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    stripe_webhook_secret:  str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    stripe_price_pro:       str = os.getenv("STRIPE_PRICE_PRO", "")
+    stripe_price_enterprise: str = os.getenv("STRIPE_PRICE_ENTERPRISE", "")
+
 
 settings = Settings()

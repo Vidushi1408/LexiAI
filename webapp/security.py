@@ -116,6 +116,11 @@ def init_app(app) -> None:
             if user:
                 g.api_user = user
 
+        # Stripe's webhook is an external POST with no cookie session and no API key — it's
+        # authenticated by its own Stripe-Signature header instead (see billing/stripe_client.py).
+        if request.path == "/webhooks/stripe":
+            return None
+
         if request.method in ("POST", "PUT", "PATCH", "DELETE") and not getattr(g, "api_user", None):
             if not validate_csrf():
                 log.warning("CSRF check failed for %s %s", request.method, request.path)
