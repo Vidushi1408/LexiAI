@@ -7,8 +7,10 @@ Runs against Postgres in production (docker-compose and CI both provide one) or 
 file for zero-setup development — see config.settings.database_url. The schema is simple enough
 to stay portable between the two.
 
-Schema changes go through Alembic (see alembic/versions/ — `alembic revision --autogenerate -m
-"..."` after editing a model below, then `alembic upgrade head`). init_db() also still runs
+Schema changes go through Alembic (see migrations/versions/ — `alembic revision --autogenerate -m
+"..."` after editing a model below, then `alembic upgrade head`). The migrations directory is
+named "migrations", not "alembic", so it doesn't shadow the installed alembic package when this
+project's own root is on sys.path (mypy and pytest both put it there). init_db() also still runs
 create_all() plus a column-patching safety net for anyone who starts the app without running
 migrations by hand (simple additive columns only); on a database it finds with no alembic_version
 table, it stamps "head" rather than replaying migrations against tables that already exist.
