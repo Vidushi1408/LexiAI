@@ -27,7 +27,11 @@ class Chunk(str):
 
 
 def _text_hash(text: str) -> str:
-    return hashlib.md5(text.encode()).hexdigest()
+    """Includes EMBED_MODEL so a cache entry from an earlier model can't be mistaken for one
+    built by the model actually in use now — the two can have different vector dimensions,
+    which crashes FAISS's index.search() rather than just returning wrong results."""
+    model_name = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
+    return hashlib.md5(f"{model_name}\n{text}".encode()).hexdigest()
 
 
 def _chunk_text(text: str, chunk_size: int = 3, overlap: int = 1) -> list[str]:

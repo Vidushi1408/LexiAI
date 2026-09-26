@@ -33,9 +33,12 @@ _CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
                           "models", "embed_cache")
 
 def _cache_path(sentences: list[str]) -> str:
-    """Return a .npy path uniquely identifying this list of sentences."""
+    """Return a .npy path uniquely identifying this list of sentences AND the model that would
+    encode them — keying on text alone let a cache entry from an earlier EMBED_MODEL silently
+    return wrong-dimension vectors for the same text under a different one."""
     os.makedirs(_CACHE_DIR, exist_ok=True)
-    key = hashlib.md5("\n".join(sentences).encode()).hexdigest()
+    model_name = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
+    key = hashlib.md5(f"{model_name}\n".encode() + "\n".join(sentences).encode()).hexdigest()
     return os.path.join(_CACHE_DIR, f"{key}.npy")
 
 
