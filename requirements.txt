@@ -17,7 +17,7 @@ nltk>=3.8.1
 # Transformers & ML
 transformers>=4.39.0
 torch>=2.2.0
-sentence-transformers>=2.6.0
+sentence-transformers>=6.1.0
 
 # Vector DB & Search
 faiss-cpu>=1.8.0
