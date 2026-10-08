@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lexi AI — Poster 2: In Action</title>
+<link rel="stylesheet" href="assets/poster.css">
+<style>
+  .poster { gap: 3.5mm; }
+  .hero { display: grid; grid-template-columns: 152mm 1fr; gap: 8mm; align-items: start; }
+  .hero .frame { box-shadow: 0 3mm 10mm rgba(56, 130, 255, 0.28), 0 3mm 9mm rgba(0,0,0,.5); }
+
+  .anatomy { display: flex; flex-direction: column; gap: 3.6mm; }
+  .anatomy h2 { font-size: 15pt; font-weight: 800; letter-spacing: 0.02em; }
+  .legend { display: flex; flex-direction: column; gap: 2.6mm; }
+  .lg { display: grid; grid-template-columns: 7mm 1fr; gap: 3mm; align-items: start; }
+  .lg .pin { position: static; transform: none; width: 6.6mm; height: 6.6mm; }
+  .lg b { font-size: 10.2pt; display: block; line-height: 1.2; }
+  .lg span { font-size: 8.8pt; color: var(--muted); line-height: 1.32; display: block; }
+  .verify { padding: 3.2mm 4mm; }
+  .verify .q { font-size: 9pt; font-style: italic; color: var(--text); line-height: 1.32; }
+  .verify .a { font-size: 8.6pt; color: var(--muted); margin-top: 1.6mm; line-height: 1.32; }
+  .verify .ok { display: inline-block; margin-top: 1.8mm; font-size: 7.4pt; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.6mm 2.4mm; border-radius: 99mm; background: rgba(52,211,153,.14); border: 0.25mm solid rgba(52,211,153,.6); color: #aaf0d3; }
+  .flow { display: flex; align-items: center; gap: 1.2mm; }
+  .flow .n { flex: 1; text-align: center; font-size: 7pt; font-weight: 700; line-height: 1.2; padding: 1.8mm 1mm; border-radius: 2mm; border: 0.3mm solid var(--line); background: var(--panel-strong); }
+  .flow .n.hl2 { border-color: rgba(56,189,248,.6); color: #bfe9fd; }
+  .flow .ar { color: var(--cyan); font-weight: 800; font-size: 9pt; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm 9mm; align-items: start; }
+  .blk { display: flex; flex-direction: column; gap: 2.4mm; }
+  .cap { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; align-items: center; }
+  .cap .num { width: 9mm; height: 9mm; border-radius: 2.4mm; display: grid; place-items: center; font-weight: 800; font-size: 11pt; color: #04101f; background: linear-gradient(135deg, #38bdf8, #8b9cff); }
+  .cap h3 { font-size: 12.4pt; font-weight: 800; line-height: 1.15; }
+  .cap p { font-size: 8.8pt; color: var(--muted); line-height: 1.32; margin-top: 0.5mm; }
+  .cap p b { color: var(--text); }
+  .tag-ok, .tag-rv { font-weight: 800; font-size: 7.6pt; padding: 0.3mm 1.8mm; border-radius: 99mm; border: 0.25mm solid; white-space: nowrap; }
+  .tag-ok { color: #aaf0d3; border-color: rgba(52,211,153,.6); background: rgba(52,211,153,.12); }
+  .tag-rv { color: #fde7a6; border-color: rgba(251,191,36,.6); background: rgba(251,191,36,.12); }
+
+  .found { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin-top: 3mm; }
+  .found div { text-align: center; padding: 1.8mm 1mm; border-radius: 2.4mm; border: 0.3mm solid var(--line); background: var(--panel); }
+  .found b { display: block; font-size: 15pt; color: var(--cyan); line-height: 1; }
+  .found span { font-size: 7.2pt; color: var(--muted); line-height: 1.15; display: block; margin-top: 0.8mm; }
+
+  .strip { display: grid; grid-template-columns: auto 1fr; gap: 8mm; align-items: center; padding: 2.2mm 5mm; }
+  .steps4 { display: flex; align-items: center; gap: 2.6mm; }
+  .steps4 .s { display: flex; align-items: center; gap: 2mm; font-size: 9pt; font-weight: 700; white-space: nowrap; }
+  .steps4 .s i { width: 6.4mm; height: 6.4mm; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 8.6pt; font-weight: 800; color: #05101f; background: linear-gradient(135deg, #38bdf8, #a78bfa); }
+  .steps4 .ar { color: var(--dim); }
+  .facts { display: flex; gap: 1.8mm; flex-wrap: wrap; justify-content: flex-end; max-width: 120mm; }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <header class="hdr">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="11" cy="14" r="2.6"/><line x1="13" y1="16" x2="15.6" y2="18.6"/></svg></div>
+      <div>
+        <div class="kicker">Project Poster 2 of 4 &nbsp;·&nbsp; Working Screenshots</div>
+        <h1 class="title" style="font-size:42pt">Lexi AI <span class="grad">in action</span></h1>
+        <p class="tagline">Every screen on this poster is a real capture from the running app — one 10-page vendor contract, a local Llama&nbsp;3.2&nbsp;3B model, no mock-ups.</p>
+      </div>
+    </div>
+    <div class="chips"><span class="chip c">Real screenshots</span><span class="chip v">No mock-ups</span><span class="chip g">100% local</span></div>
+  </header>
+
+  <!-- ============ HERO: cited Q&A ============ -->
+  <section class="hero">
+    <div class="frame">
+      <div class="bar"><i></i><i></i><i></i><span>localhost:8000/qa &nbsp;·&nbsp; Executive Document Q&amp;A</span></div>
+      <div class="crop" style="--iw:2720;--x0:100;--x1:2620;--y0:440;--y1:2250">
+        <img src="assets/shots/05_qa.jpg" alt="Q&A screen">
+        <div class="pin" style="left:98.2%;top:9.9%">1</div>
+        <div class="pin" style="left:98.2%;top:25.1%">2</div>
+        <div class="pin" style="left:98.2%;top:61%">3</div>
+        <div class="pin" style="left:98.2%;top:76.6%">4</div>
+      </div>
+    </div>
+
+    <div class="anatomy">
+      <h2>Anatomy of a cited answer</h2>
+      <div class="legend">
+        <div class="lg"><div class="pin">1</div><div><b>Ask in plain English</b><span>No query language, no keywords to guess.</span></div></div>
+        <div class="lg"><div class="pin">2</div><div><b>Grounded answer, inline citations</b><span>Each claim carries a marker like [5] that points to a numbered source.</span></div></div>
+        <div class="lg"><div class="pin">3</div><div><b>Honest confidence</b><span>Retrieval confidence (here 54 %, “Medium”) is shown, not hidden — plus exactly which sources were cited.</span></div></div>
+        <div class="lg"><div class="pin">4</div><div><b>Verifiable sources</b><span>Each source lists document, <b style="display:inline;font-size:inherit;color:var(--text)">page</b>, relevance score and whether the model really cited it.</span></div></div>
+      </div>
+      <div class="card verify">
+        <div class="q">“What uptime does the Vendor guarantee, and what happens if it falls short?”</div>
+        <div class="a">Contract §4.1–4.2: 99.9 % monthly availability; a service credit of 5 % of the monthly fee per full hour of downtime, capped at 25 %. The answer on screen says exactly that.</div>
+        <span class="ok">✓ Checked against the contract text</span>
+      </div>
+      <div class="flow">
+        <div class="n">Question</div><span class="ar">›</span>
+        <div class="n hl2">Hybrid search</div><span class="ar">›</span>
+        <div class="n">Top-5 passages</div><span class="ar">›</span>
+        <div class="n hl2">Local LLM</div><span class="ar">›</span>
+        <div class="n">Cited answer</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Compliance + Briefing ============ -->
+  <section class="grid2">
+    <div class="blk">
+      <div class="cap"><div class="num">2</div><div>
+        <h3>Compliance checker — a quote, or it doesn’t pass</h3>
+        <p>Every <span class="tag-ok">PASS</span> must carry a verbatim quote that is machine-checked against the page; if the model can’t back a claim it is downgraded to <span class="tag-rv">REVIEW</span> for a human. <b>Eight live runs: 0–4 of 6 checks passed.</b> A verified quote proves a passage exists — a reviewer still decides if it proves the point.</p></div></div>
+      <div class="frame"><div class="bar"><i></i><i></i><i></i><span>localhost:8000/compliance</span></div>
+        <div class="crop" style="--iw:2000;--x0:30;--x1:1970;--y0:1016;--y1:1895"><img src="assets/shots/n_03_compliance.jpg" alt="Compliance screen"></div></div>
+    </div>
+    <div class="blk">
+      <div class="cap"><div class="num">3</div><div>
+        <h3>Executive briefing — the one-page read</h3>
+        <p>One click gives <b>bottom line, key decisions, risks, key numbers and next actions</b>, citing the source chunks it used (6 of 8 runs) — and warning you when it didn’t.</p></div></div>
+      <div class="frame"><div class="bar"><i></i><i></i><i></i><span>localhost:8000/briefings</span></div>
+        <div class="crop" style="--iw:2000;--x0:30;--x1:1970;--y0:905;--y1:1762"><img src="assets/shots/n_08_briefing.jpg" alt="Briefing screen"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ Tagging + Entities ============ -->
+  <section class="grid2">
+    <div class="blk">
+      <div class="cap"><div class="num">4</div><div>
+        <h3>Sentence tagger — our trained ANN, live</h3>
+        <p>The neural network from Poster 1 labels all <b>80 sentences</b> of the contract and shows its confidence. Filter by tag — here <b>Financial</b> — to see every money clause at once.</p></div></div>
+      <div class="frame"><div class="bar"><i></i><i></i><i></i><span>localhost:8000/clustering</span></div>
+        <div class="crop" style="--iw:2000;--x0:30;--x1:1970;--y0:545;--y1:1480"><img src="assets/shots/n_07_tagging_financial.jpg" alt="Tagging screen"></div></div>
+    </div>
+    <div class="blk">
+      <div class="cap"><div class="num">5</div><div>
+        <h3>Entities &amp; clauses — structure from prose</h3>
+        <p>Organisations, people, places, dates, money and payment terms, found by <b>BERT NER plus clause rules</b> in the same contract.</p></div></div>
+      <div class="frame"><div class="bar"><i></i><i></i><i></i><span>localhost:8000/entities</span></div>
+        <div class="crop" style="--iw:2000;--x0:30;--x1:1970;--y0:745;--y1:1570"><img src="assets/shots/n_04_entities.jpg" alt="Entities screen"></div></div>
+      <div class="found">
+        <div><b>7</b><span>organisations</span></div><div><b>5</b><span>people</span></div><div><b>11</b><span>dates &amp; deadlines</span></div><div><b>6</b><span>financial values</span></div>
+        <div><b>9</b><span>locations</span></div><div><b>31</b><span>obligations</span></div><div><b>20</b><span>risk clauses</span></div><div><b>1</b><span>payment term</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Reproduce ============ -->
+  <section class="card strip">
+    <div class="steps4">
+      <div class="s"><i>1</i>Upload a PDF</div><span class="ar">›</span>
+      <div class="s"><i>2</i>Process (embed + index)</div><span class="ar">›</span>
+      <div class="s"><i>3</i>Ask · analyse · tag</div><span class="ar">›</span>
+      <div class="s"><i>4</i>Verify in the audit log</div>
+    </div>
+    <div class="facts">
+      <span class="chip c">1 contract · 10 pages</span><span class="chip">2,644 words</span><span class="chip">62 indexed chunks</span><span class="chip g">Llama 3.2 3B · local</span>
+    </div>
+  </section>
+
+  <footer class="ftr"><span><b>Lexi AI</b> · Your documents. Your decisions. Instantly.</span><span>Poster 2 / 4 · Working screenshots</span></footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,148 @@
+/* Shared design system for the four Lexi AI A3 posters (297 x 420 mm, portrait). */
+:root {
+  --bg: #050b1b;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-strong: rgba(255, 255, 255, 0.075);
+  --line: rgba(148, 163, 184, 0.24);
+  --text: #e9effc;
+  --muted: #a3b4d2;
+  --dim: #7c8fb2;
+  --cyan: #38bdf8;
+  --blue: #5b93ff;
+  --violet: #a78bfa;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --font: "Avenir Next", "Avenir", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "SF Mono", Menlo, Consolas, monospace;
+}
+
+@page { size: 297mm 420mm; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 297mm; height: 420mm; background: var(--bg); }
+body {
+  font-family: var(--font);
+  color: var(--text);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  line-height: 1.38;
+}
+
+.poster {
+  position: relative;
+  width: 297mm;
+  height: 420mm;
+  overflow: hidden;
+  padding: 12mm 13mm 10mm;
+  display: flex;
+  flex-direction: column;
+  gap: 5mm;
+  background:
+    radial-gradient(760px 620px at 104% -4%, rgba(91, 147, 255, 0.34), transparent 62%),
+    radial-gradient(700px 600px at -10% 40%, rgba(167, 139, 250, 0.20), transparent 64%),
+    radial-gradient(820px 640px at 78% 106%, rgba(56, 189, 248, 0.22), transparent 62%),
+    linear-gradient(180deg, #061024 0%, #071229 55%, #050b1b 100%);
+}
+.poster::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(148, 163, 184, 0.16) 0.6px, transparent 0.7px);
+  background-size: 5mm 5mm;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.poster > * { position: relative; z-index: 1; }
+
+.grad { color: #5eb8ff; }
+
+/* ---------- header ---------- */
+.hdr { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }
+.brand { display: flex; gap: 6mm; align-items: center; }
+.logo {
+  flex: none;
+  width: 21mm; height: 21mm; border-radius: 5.8mm;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #0ea5e9 0%, #4f7cff 55%, #8b5cf6 100%);
+  box-shadow: 0 2mm 6mm rgba(56, 130, 255, 0.45), inset 0 0 0 0.35mm rgba(255, 255, 255, 0.28);
+}
+.logo svg { width: 12mm; height: 12mm; stroke: #fff; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.kicker { font-size: 8.5pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); font-weight: 700; }
+h1.title { font-size: 48pt; line-height: 1; font-weight: 800; letter-spacing: -0.02em; margin-top: 1.2mm; }
+.tagline { font-size: 11.6pt; color: var(--muted); margin-top: 1.4mm; max-width: 175mm; }
+.chips { display: flex; flex-wrap: wrap; gap: 2mm; justify-content: flex-end; max-width: 78mm; padding-top: 1mm; }
+.chip {
+  font-size: 8.5pt; font-weight: 700; letter-spacing: 0.04em;
+  padding: 1.3mm 3.2mm; border-radius: 99mm;
+  border: 0.3mm solid var(--line); background: var(--panel); color: var(--text);
+}
+.chip.c { border-color: rgba(56,189,248,.55); color: #bfe9fd; }
+.chip.v { border-color: rgba(167,139,250,.55); color: #ddd2fd; }
+.chip.g { border-color: rgba(52,211,153,.55); color: #c4f3e1; }
+
+/* ---------- generic card + section ---------- */
+.card {
+  background: var(--panel);
+  border: 0.3mm solid var(--line);
+  border-radius: 3.2mm;
+  padding: 4mm 4.6mm;
+}
+.sec { display: flex; flex-direction: column; gap: 3mm; }
+.sh { display: flex; align-items: center; gap: 3mm; }
+.sh .num {
+  flex: none; min-width: 10mm; height: 8mm; padding: 0 2.4mm; border-radius: 2.2mm;
+  display: grid; place-items: center;
+  font-size: 11pt; font-weight: 800; color: #04101f;
+  background: linear-gradient(135deg, #38bdf8, #8b9cff);
+}
+.sh h2 { font-size: 17pt; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.sh .rule { flex: 1; height: 0.35mm; background: linear-gradient(90deg, var(--line), transparent); }
+
+p.body, .body { font-size: 10.6pt; color: var(--text); }
+.muted { color: var(--muted); }
+.small { font-size: 8.6pt; }
+b, strong { font-weight: 700; }
+.hl { color: var(--cyan); font-weight: 700; }
+
+ul.dots { list-style: none; display: flex; flex-direction: column; gap: 1.8mm; }
+ul.dots li { position: relative; padding-left: 5mm; font-size: 10.4pt; }
+ul.dots li::before {
+  content: ""; position: absolute; left: 0.4mm; top: 1.75mm; width: 2.2mm; height: 2.2mm; border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #a78bfa);
+}
+
+.ico { width: 1em; height: 1em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.12em; }
+
+/* ---------- footer ---------- */
+.ftr {
+  margin-top: auto;
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 3mm; border-top: 0.3mm solid var(--line);
+  font-size: 8.5pt; color: var(--dim); letter-spacing: 0.05em;
+}
+.ftr b { color: var(--muted); }
+
+/* ---------- browser frame for screenshots ---------- */
+.frame {
+  border-radius: 3mm; overflow: hidden;
+  border: 0.35mm solid rgba(148, 163, 184, 0.35);
+  background: #0a1224;
+  box-shadow: 0 3mm 9mm rgba(0, 0, 0, 0.5);
+}
+.frame .bar { height: 6.4mm; display: flex; align-items: center; gap: 1.4mm; padding: 0 3mm; background: #121c33; border-bottom: 0.3mm solid rgba(148,163,184,.22); }
+.frame .bar i { width: 2.1mm; height: 2.1mm; border-radius: 50%; background: #475569; display: block; }
+.frame .bar i:nth-child(1) { background: #fb7185; }
+.frame .bar i:nth-child(2) { background: #fbbf24; }
+.frame .bar i:nth-child(3) { background: #34d399; }
+.frame .bar span { margin-left: 3mm; font-size: 6.6pt; color: var(--dim); font-family: var(--mono); }
+/* Zoom into a region of a full-resolution screenshot. Set on .crop: --iw (image width px), the kept
+   region --x0 --x1 --y0 --y1 (px in the original image). The box takes the region's aspect ratio. */
+.crop { position: relative; width: 100%; height: 0; overflow: hidden; background: #060d1f;
+  padding-top: calc((var(--y1) - var(--y0)) / (var(--x1) - var(--x0)) * 100%); }
+.crop img { position: absolute; display: block; max-width: none;
+  width: calc(var(--iw) / (var(--x1) - var(--x0)) * 100%);
+  left: calc(var(--x0) / (var(--x1) - var(--x0)) * -100%);
+  top: calc(var(--y0) / (var(--y1) - var(--y0)) * -100%); }
+.pin { position: absolute; width: 6.6mm; height: 6.6mm; border-radius: 50%; transform: translate(-50%, -50%);
+  display: grid; place-items: center; font-weight: 800; font-size: 9.5pt; color: #241503; background: var(--amber);
+  box-shadow: 0 0 0 1.1mm rgba(251, 191, 36, 0.35), 0 1mm 3mm rgba(0, 0, 0, 0.5); z-index: 3; }

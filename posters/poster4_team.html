@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lexi AI — Poster 4: The Team</title>
+<link rel="stylesheet" href="assets/poster.css">
+<style>
+  /* ---------- the line ---------- */
+  .metro { position: relative; flex: 1; min-height: 0; }
+  .metro .line {
+    position: absolute; left: 50%; top: 4mm; bottom: 4mm; width: 2.2mm; margin-left: -1.1mm; border-radius: 99mm;
+    background: linear-gradient(180deg, #38bdf8 0%, #5b93ff 40%, #a78bfa 75%, #34d399 100%);
+    box-shadow: 0 0 5mm rgba(91, 147, 255, 0.55);
+  }
+  .stop {
+    position: absolute; left: 50%; width: 15mm; height: 15mm; margin-left: -7.5mm; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 800; font-size: 14pt; color: #04101f;
+    background: var(--c); border: 1.4mm solid #071229; box-shadow: 0 0 0 0.6mm var(--c), 0 0 6mm var(--c); z-index: 3;
+  }
+  .branch { position: absolute; height: 0.9mm; top: 0; background: var(--c); opacity: .9; z-index: 1; }
+
+  .member {
+    position: absolute; width: 124mm; height: 61mm; padding: 4.2mm 5mm 4mm 4.4mm;
+    display: grid; grid-template-columns: 35mm 1fr; gap: 4.6mm; align-items: center;
+    border-radius: 4mm; border: 0.35mm solid color-mix(in srgb, var(--c) 55%, transparent);
+    background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.03));
+    box-shadow: 0 2.4mm 8mm rgba(0, 0, 0, 0.4);
+  }
+  .member::before { content: ""; position: absolute; left: 0; top: 5mm; bottom: 5mm; width: 1.2mm; border-radius: 0 1mm 1mm 0; background: var(--c); }
+
+  /* ---------- photo placeholder ---------- */
+  .photo {
+    position: relative; width: 35mm; height: 35mm; border-radius: 50%; overflow: hidden;
+    border: 0.9mm dashed var(--c); background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.12), rgba(255,255,255,.03));
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 1.2mm rgba(255,255,255,.04);
+  }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; }
+  .photo .ph { text-align: center; color: var(--muted); }
+  .photo .ph svg { width: 15mm; height: 15mm; stroke: var(--c); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; margin: 0 auto 1mm; }
+  .photo .ph span { font-size: 6.6pt; letter-spacing: 0.18em; font-weight: 700; text-transform: uppercase; }
+
+  .who .st { font-size: 7.6pt; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 800; color: var(--c); }
+  .who h2 { font-size: 19pt; font-weight: 800; line-height: 1.05; margin-top: 0.8mm; letter-spacing: -0.01em; }
+  .who .role { display: inline-block; margin-top: 1.4mm; font-size: 8.2pt; font-weight: 700; padding: 0.7mm 2.8mm; border-radius: 99mm; color: #05101f; background: var(--c); }
+  .who ul { list-style: none; margin-top: 2.2mm; display: flex; flex-direction: column; gap: 0.9mm; }
+  .who li { position: relative; padding-left: 4mm; font-size: 9.2pt; line-height: 1.28; color: var(--text); }
+  .who li::before { content: ""; position: absolute; left: 0.2mm; top: 1.3mm; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--c); }
+
+  .together { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3.4mm; }
+  .together div { text-align: center; padding: 2.8mm 1mm; border-radius: 3mm; border: 0.3mm solid var(--line); background: var(--panel-strong); }
+  .together b { display: block; font-size: 20pt; line-height: 1; color: var(--cyan); }
+  .together span { display: block; font-size: 8pt; color: var(--muted); margin-top: 1mm; line-height: 1.2; }
+  .thanks { text-align: center; }
+  .thanks h2 { font-size: 24pt; font-weight: 800; letter-spacing: -0.01em; }
+  .thanks p { font-size: 10.4pt; color: var(--muted); margin-top: 1mm; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol></svg>
+
+<div class="poster">
+
+  <header class="hdr">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="11" cy="14" r="2.6"/><line x1="13" y1="16" x2="15.6" y2="18.6"/></svg></div>
+      <div>
+        <div class="kicker">Project Poster 4 of 4 &nbsp;·&nbsp; The Team</div>
+        <h1 class="title" style="font-size:42pt">The crew behind <span class="grad">Lexi AI</span></h1>
+        <p class="tagline">Five people, one pipeline: from a raw PDF to a cited, auditable answer. Ride the line and meet the owner of every stop.</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ the metro-style line ============ -->
+  <section class="metro" id="metro">
+    <div class="line"></div>
+
+    <!-- 1 · Vidushi (left) -->
+    <div class="stop" style="--c:#38bdf8; top: 23.0mm">1</div>
+    <div class="branch" style="--c:#38bdf8; top: 30.05mm; left: 129mm; width: 6.5mm"></div>
+    <div class="member" style="--c:#38bdf8; left: 5mm; top: 0mm">
+      <div class="photo"><img src="photos/vidushi.jpg" alt="" onerror="this.remove()"><div class="ph"><svg><use href="#i-user"/></svg><span>Add photo</span></div></div>
+      <div class="who"><div class="st">Station 01 · Platform</div><h2>Vidushi Bhadauria</h2><span class="role">Project Lead · Full-stack Engineer</span>
+        <ul><li>Flask web app and JSON API</li><li>Database, migrations, roles &amp; audit log</li><li>Stripe billing, tests and CI</li><li>Integrated every component end to end</li></ul></div>
+    </div>
+
+    <!-- 2 · Aryama (right) -->
+    <div class="stop" style="--c:#5b93ff; top: 80.0mm">2</div>
+    <div class="branch" style="--c:#5b93ff; top: 87.05mm; left: 135.5mm; width: 6.5mm"></div>
+    <div class="member" style="--c:#5b93ff; right: 5mm; top: 57mm">
+      <div class="photo"><img src="photos/aryama.jpg" alt="" onerror="this.remove()"><div class="ph"><svg><use href="#i-user"/></svg><span>Add photo</span></div></div>
+      <div class="who"><div class="st">Station 02 · Retrieval</div><h2>Aryama Sharma</h2><span class="role">NLP &amp; Retrieval Engineer</span>
+        <ul><li>Text pre-processing pipeline (NLTK)</li><li>MiniLM embeddings + FAISS index</li><li>BM25 + hybrid search ranking</li><li>Retrieval evaluation: Recall@k, MRR</li></ul></div>
+    </div>
+
+    <!-- 3 · Ashi (left) -->
+    <div class="stop" style="--c:#a78bfa; top: 137.0mm">3</div>
+    <div class="branch" style="--c:#a78bfa; top: 144.05mm; left: 129mm; width: 6.5mm"></div>
+    <div class="member" style="--c:#a78bfa; left: 5mm; top: 114mm">
+      <div class="photo"><img src="photos/ashi.jpg" alt="" onerror="this.remove()"><div class="ph"><svg><use href="#i-user"/></svg><span>Add photo</span></div></div>
+      <div class="who"><div class="st">Station 03 · Understanding</div><h2>Ashi Srivastava</h2><span class="role">GenAI &amp; Extraction Engineer</span>
+        <ul><li>Local-LLM prompts: briefings, compliance, actions</li><li>Citations and verbatim-quote verification</li><li>BERT NER and contract-clause extractors</li><li>Prompt-injection safeguards</li></ul></div>
+    </div>
+
+    <!-- 4 · Parth (right) -->
+    <div class="stop" style="--c:#f59e0b; top: 194.0mm">4</div>
+    <div class="branch" style="--c:#f59e0b; top: 201.05mm; left: 135.5mm; width: 6.5mm"></div>
+    <div class="member" style="--c:#f59e0b; right: 5mm; top: 171mm">
+      <div class="photo"><img src="photos/parth.jpg" alt="" onerror="this.remove()"><div class="ph"><svg><use href="#i-user"/></svg><span>Add photo</span></div></div>
+      <div class="who"><div class="st">Station 04 · Models</div><h2>Parth Nawal</h2><span class="role">ML Engineer · Classification</span>
+        <ul><li>Built the 280-sentence labelled dataset</li><li>Trained and compared ANN, CNN and LSTM</li><li>Evaluation: ANN wins with F1 = 0.84</li><li>Shipped the winner into the Tagging page</li></ul></div>
+    </div>
+
+    <!-- 5 · Simran (left) -->
+    <div class="stop" style="--c:#34d399; top: 251.0mm">5</div>
+    <div class="branch" style="--c:#34d399; top: 258.05mm; left: 129mm; width: 6.5mm"></div>
+    <div class="member" style="--c:#34d399; left: 5mm; top: 228mm">
+      <div class="photo"><img src="photos/simran.jpg" alt="" onerror="this.remove()"><div class="ph"><svg><use href="#i-user"/></svg><span>Add photo</span></div></div>
+      <div class="who"><div class="st">Station 05 · Experience</div><h2>Simran Karan Bora</h2><span class="role">UX, Data &amp; Quality</span>
+        <ul><li>UI design and every screen you saw</li><li>Sector test sets and the 10-page demo contract</li><li>Manual testing and bug triage</li><li>Demo, documentation and these posters</li></ul></div>
+    </div>
+  </section>
+
+  <section class="together">
+    <div><b>5</b><span>teammates</span></div>
+    <div><b>5</b><span>sector evaluation sets</span></div>
+    <div><b>85</b><span>evaluation questions</span></div>
+    <div><b>280</b><span>labelled sentences</span></div>
+    <div><b>163</b><span>automated tests</span></div>
+  </section>
+
+  <section class="thanks">
+    <h2>Thank you — <span class="grad">questions welcome</span></h2>
+    <p>Your documents. Your decisions. Instantly.</p>
+  </section>
+
+  <footer class="ftr"><span><b>Lexi AI</b> · Business document intelligence</span><span>Poster 4 / 4 · The team</span></footer>
+</div>
+</body>
+</html>
